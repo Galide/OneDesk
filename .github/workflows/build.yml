@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   windows:
-    name: Windows host installer
+    name: Windows host and client installers
     runs-on: windows-latest
 
     steps:
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: OneDesk-Windows-Setup
-          path: dist/OneDesk-Setup-*.exe
+          path: dist/OneDesk*-Setup-*.exe
           if-no-files-found: error
 
   macos:

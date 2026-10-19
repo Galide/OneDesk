@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OneDesk.Platform.Win</AssemblyName>
+    <RootNamespace>OneDesk.Platform.Win</RootNamespace>
+    <Description>Windows input injection, DDC/CI and clipboard helpers shared by the OneDesk host and client.</Description>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- The macOS CI job builds projects individually, but this keeps a plain
+         `dotnet build OneDesk.sln` working on non-Windows hosts too. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OneDesk.Core\OneDesk.Core.csproj" />
+  </ItemGroup>
+
+</Project>

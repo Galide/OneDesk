@@ -39,15 +39,6 @@ internal static class Native
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
     public struct KBDLLHOOKSTRUCT
     {
         public uint vkCode;
@@ -67,26 +58,6 @@ internal static class Native
         public IntPtr dwExtraInfo;
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct MONITORINFOEX
-    {
-        public int cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public uint dwFlags;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string szDevice;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct PHYSICAL_MONITOR
-    {
-        public IntPtr hPhysicalMonitor;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string szPhysicalMonitorDescription;
-    }
-
-    public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr data);
     public delegate IntPtr LowLevelProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -139,57 +110,4 @@ internal static class Native
         public POINT pt;
         public uint lPrivate;
     }
-
-    [DllImport("user32.dll")]
-    public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
-
-    [DllImport("dxva2.dll", SetLastError = true)]
-    public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint numberOfPhysicalMonitors);
-
-    [DllImport("dxva2.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint arraySize,
-        [Out] PHYSICAL_MONITOR[] physicalMonitorArray);
-
-    [DllImport("dxva2.dll", SetLastError = true)]
-    public static extern bool DestroyPhysicalMonitors(uint arraySize, [In] PHYSICAL_MONITOR[] physicalMonitorArray);
-
-    [DllImport("dxva2.dll", SetLastError = true)]
-    public static extern bool SetVCPFeature(IntPtr hMonitor, byte code, uint value);
-
-    [DllImport("dxva2.dll", SetLastError = true)]
-    public static extern bool GetVCPFeatureAndVCPFeatureReply(IntPtr hMonitor, byte code, out uint vcpType,
-        out uint currentValue, out uint maximumValue);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool OpenClipboard(IntPtr hWndNewOwner);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool CloseClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool EmptyClipboard();
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr GetClipboardData(uint uFormat);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GlobalFree(IntPtr hMem);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GlobalLock(IntPtr hMem);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern bool GlobalUnlock(IntPtr hMem);
-
-    public const uint CF_UNICODETEXT = 13;
-    public const uint GMEM_MOVEABLE = 0x0042;
 }

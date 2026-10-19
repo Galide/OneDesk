@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 using OneDesk.Core;
-using static OneDesk.Host.Native;
+using static OneDesk.Platform.Win.NativeWin;
 
-namespace OneDesk.Host;
+namespace OneDesk.Platform.Win;
 
 public static class WinClipboard
 {

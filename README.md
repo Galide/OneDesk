@@ -1,8 +1,13 @@
 # OneDesk
 
-用一套键盘鼠标同时操作 **Windows PC** 和 **Apple Silicon Mac**，并在两台机器共用的显示器上自动切换输入源。
+用一套键盘鼠标同时操作 **Windows PC** 和 **Apple Silicon Mac**（或另一台 Windows PC），并在两台机器共用的显示器上自动切换输入源。
 
-Windows 作为 Host（键盘、鼠标、剪贴板都在这一侧），Mac 作为 Client（接收按键、鼠标和剪贴板）。按一次热键即可切换控制权；显示器通过 DDC/CI 自动切换，不需要额外的 KVM 硬件。
+有键盘鼠标的那台机器作为 Host，另一台作为 Client（接收按键、鼠标和剪贴板）。按一次热键即可切换控制权；显示器通过 DDC/CI 自动切换，不需要额外的 KVM 硬件。
+
+| 组合 | Host 安装 | Client 安装 |
+| --- | --- | --- |
+| Windows ↔ Mac | `OneDesk-Setup-*.exe` | `OneDesk-*.pkg` / zip |
+| Windows ↔ Windows | `OneDesk-Setup-*.exe` | `OneDeskClient-Setup-*.exe` |
 
 ```
         ┌──────────────────────────────┐
@@ -24,7 +29,7 @@ Windows 作为 Host（键盘、鼠标、剪贴板都在这一侧），Mac 作为
 ## 功能
 
 - **一键切换**：默认 `Ctrl + Alt + Space`，可自定义。
-- **键鼠转发**：Windows 捕获并屏蔽输入，Mac 通过 CoreGraphics 注入；支持组合键、鼠标按键、滚轮和横向滚轮。
+- **键鼠转发**：Windows 捕获并屏蔽输入，Mac 通过 CoreGraphics、第二台 Windows 通过 `SendInput` 注入；支持组合键、鼠标按键、滚轮和横向滚轮。
 - **剪贴板**：切换时双向同步纯文本；也可从托盘菜单手动发送。
 - **显示器输入切换**：
   - Windows → Mac：Windows 侧通过 DDC/CI 切换到 Mac 所在的接口。
@@ -38,7 +43,7 @@ Windows 作为 Host（键盘、鼠标、剪贴板都在这一侧），Mac 作为
 
 | 项目 | 要求 |
 | --- | --- |
-| Windows | Windows 10 1809 或更高版本，x64 |
+| Windows（Host 或 Windows 客户端） | Windows 10 1809 或更高版本，x64 |
 | macOS | macOS 12 或更高版本，**Apple Silicon（arm64）** |
 | 网络 | 两台机器在同一局域网；建议使用有线网络或稳定的 5 GHz Wi-Fi |
 | 显示器 | 支持 DDC/CI，并在 OSD 菜单中启用 DDC/CI |
@@ -182,6 +187,35 @@ brew install m1ddc
 - `m1ddc` 只有 `set input`，**没有读取当前输入的命令**。因此 Mac 侧的接口值只能看显示器 OSD 里显示的活动输入名称，或用 `--test-ddc <值>` 逐个试——注意试错会让显示器切到无信号输入，需要用显示器上的按键切回来。
 - 部分 LG 显示器需要启用“备用输入寻址”（配置文件中的 `MacAlternateInput`，目前可在配置 JSON 中设置）。
 
+## 两台 Windows 互相控制
+
+除了 macOS 客户端，仓库还提供 **Windows 客户端**（`dist\OneDeskClient-Setup-1.0.0.exe`）。有键盘鼠标的那台机器照常安装 `OneDesk-Setup-*.exe`；第二台 Windows 安装客户端版本。
+
+1. 在第二台 Windows 上安装客户端。首次启动会打开设置窗口，之后可以从托盘图标右键 → **设置…** 打开。
+2. 填写主机信息：
+   - **主机地址**：主机的局域网 IPv4（主机设置窗口顶部会列出）；
+   - **端口**：与主机一致，默认 `47821`；
+   - **配对密码**：粘贴主机上“复制”得到的密码。
+3. 显示器接口按实际接线填写，两台的 `MyInput` / `PeerInput` 必须**互换**：
+
+   | | 主机（Windows A） | 客户端（Windows B） |
+   | --- | --- | --- |
+   | 本机接口 | 自己接的口，如 HDMI 1 = `17` | 自己接的口，如 DP 1 = `15` |
+   | 对端接口 | 客户端接的口，如 `15` | 主机接的口，如 `17` |
+
+4. 勾选“启动后自动连接主机”，点击“保存”。
+5. 在主机上按热键切换；再按一次切回。
+
+客户端与 macOS 客户端的工作方式相同：接管期间重放键鼠事件，释放时把显示器切回自己的接口。它只需要**出站**连接，因此不添加入站防火墙规则。
+
+注意事项：
+
+- **管理员权限（UIPI）**：以普通权限运行的客户端无法向以管理员身份运行的前台窗口（任务管理器、UAC 提示等）注入输入。需要在那些窗口里操作时，右键客户端 → **以管理员身份运行**。安装包本身不要求常驻管理员权限，开机启动也不会弹 UAC。
+- 主机和客户端不要运行在同一台机器上，否则会互相抢输入。
+- 客户端的 `Ctrl ↔ Command` 交换、滚动反转不生效——这两个选项只对 macOS 有意义，客户端设置里也不提供。
+- 鼠标使用绝对坐标，只映射到客户端的**主显示器**。客户端接多显示器时，指针只会落在主屏。
+- 显示器输入切换同样要求客户端的显示器接口支持 DDC/CI 写入；Windows 端没有 m1ddc 那类 HDMI 限制，但部分显示器的 HDMI 口仍然拒绝 DDC 写入。
+
 ## 配对与首次使用
 
 1. Windows 托盘菜单 → **设置…**，复制配对密码，确认端口（默认 `47821`）。
@@ -217,7 +251,7 @@ VCP 代码 `0x60`（96）表示输入源。常见值：
 - Windows 只能在**自己处于活动输入**时可靠地发送 DDC 命令，所以“切到 Mac”由 Windows 发起，“切回 Windows”由 Mac 发起。
 - 如果 Mac 端崩溃或 m1ddc 不可用，显示器可能停在 Mac 输入。此时用显示器按键手动切回，或重启 Mac 端后重试。
 - 只转发**键盘、鼠标和纯文本剪贴板**；不转发音频、U 盘、摄像头等 USB 设备。
-- 不支持 Windows 安全桌面（`Ctrl+Alt+Del`、UAC 提示、锁屏）上的输入；这些界面由 Windows 自己处理。
+- 不支持 Windows 安全桌面（`Ctrl+Alt+Del`、UAC 提示、锁屏）上的输入；这些界面由 Windows 自己处理。Windows 客户端还受 UIPI 限制，普通权限下无法向管理员权限的窗口注入输入。
 - 同一时间只允许一个 Mac 客户端连接。
 - 建议在可信局域网使用。协议是加密的，但没有做第三方安全审计；不要在公网直接暴露 `47821` 端口。
 - 剪贴板为纯文本，按 UTF-8 限制在约 1.5 MB；图片/文件不会同步。
@@ -277,7 +311,7 @@ open /Applications/OneDesk.app
 
 ### Windows
 
-设置 → 应用 → OneDesk → 卸载。安装程序会删除防火墙规则。用户配置和日志保留在 `%APPDATA%\OneDesk`，需要时手动删除。
+设置 → 应用 → **OneDesk**（主机）或 **OneDesk Client**（客户端）→ 卸载。主机安装程序会删除防火墙规则，客户端卸载会删除开机启动项。用户配置和日志保留在 `%APPDATA%\OneDesk`，需要时手动删除。
 
 ### macOS
 
@@ -309,7 +343,17 @@ dotnet run --project tools/OneDesk.SelfTest -c Release
 powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1
 ```
 
-产物：`dist\OneDesk-Setup-1.0.0.exe`（自包含，约 58 MB）。
+产物（自包含，各约 58 MB）：
+
+- `dist\OneDesk-Setup-1.0.0.exe`（主机）
+- `dist\OneDeskClient-Setup-1.0.0.exe`（Windows 客户端）
+
+只构建其中一个：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -Target host
+powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -Target client
+```
 
 ### macOS
 
@@ -338,12 +382,12 @@ export PKG_SIGN_IDENTITY="Developer ID Installer: Your Name (TEAMID)"
 
 ### GitHub Actions
 
-`.github/workflows/build.yml` 会在以下环境构建两个安装包：
+`.github/workflows/build.yml` 会在以下环境构建三个安装包：
 
-- `windows-latest`：构建、运行自测、用 Inno Setup 打包；
+- `windows-latest`：构建、运行自测、用 Inno Setup 打包主机和 Windows 客户端；
 - `macos-15`（Apple Silicon）：构建、运行自测、`brew install m1ddc`、生成 `.pkg` 和 `.zip`。
 
-推送代码或手动触发 workflow 后，从 Actions 页面下载 `OneDesk-Windows-Setup` 和 `OneDesk-macOS-arm64` 两个 artifact。
+推送代码或手动触发 workflow 后，从 Actions 页面下载 `OneDesk-Windows-Setup`（含两个 exe）和 `OneDesk-macOS-arm64` 两个 artifact。
 
 ### 测试
 
@@ -351,23 +395,25 @@ export PKG_SIGN_IDENTITY="Developer ID Installer: Your Name (TEAMID)"
 dotnet run --project tools/OneDesk.SelfTest
 ```
 
-覆盖配置规范化、键位映射、协议往返、加密握手、大剪贴板、错误密码拒绝等。macOS 上同样可以运行（不依赖 CoreGraphics）。
+覆盖配置规范化、键位映射、Windows 输入映射（绝对坐标、按键/滚轮标志位）、协议往返、加密握手、大剪贴板、错误密码拒绝等。macOS 上同样可以运行（不依赖 CoreGraphics，也不依赖 Windows 的 P/Invoke）。
 
 ## 项目结构
 
 ```
-src/OneDesk.Core/           配置、日志、协议、加密、键位映射、本地 Web 服务
-src/OneDesk.Host.Win/       Windows 托盘程序、全局钩子、DDC/CI、剪贴板
+src/OneDesk.Core/           配置、日志、协议、加密、键位/坐标映射、本地 Web 服务
+src/OneDesk.Platform.Win/   Windows 公共层：SendInput 注入、DDC/CI、剪贴板
+src/OneDesk.Host.Win/       Windows 托盘程序（主机）、全局钩子
 src/OneDesk.Client.Mac/     macOS 守护进程、CoreGraphics 注入、m1ddc、LaunchAgent
+src/OneDesk.Client.Win/     Windows 托盘程序（客户端）、连接与重放
 tools/OneDesk.SelfTest/     无第三方依赖的自测
-installer/windows/          Inno Setup 脚本与构建脚本
+installer/windows/          Inno Setup 脚本（主机 + 客户端）与构建脚本
 installer/macos/            Info.plist、pkg 脚本、构建/卸载脚本
 .github/workflows/          Windows + macOS 自动构建
 ```
 
 ## 安全说明
 
-- 传输：每条连接由 Mac 生成 16 字节随机盐，双方用 PBKDF2-SHA256（120,000 次）派生 256 位密钥；消息使用 AES-256-GCM 加密并带 8 字节序号，防止重放和篡改。
+- 传输：每条连接由客户端生成 16 字节随机盐，双方用 PBKDF2-SHA256（120,000 次）派生 256 位密钥；消息使用 AES-256-GCM 加密并带 8 字节序号，防止重放和篡改。
 - 配对密码只用于派生密钥，不直接上线传输。密码中的空白和 `-` 会被移除，比较时不区分大小写。
 - Windows 只接受一个客户端；握手超时 8 秒，心跳超时 8 秒。
 - Mac 配置页只绑定 `127.0.0.1`，所有 API 需要页面内嵌的随机 token；没有跨域接口。

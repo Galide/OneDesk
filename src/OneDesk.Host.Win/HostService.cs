@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using OneDesk.Core;
+using OneDesk.Platform.Win;
 using static OneDesk.Host.Native;
 using Message = OneDesk.Core.Message;
 

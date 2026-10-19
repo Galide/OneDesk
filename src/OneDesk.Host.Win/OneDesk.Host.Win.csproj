@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OneDesk.Core\OneDesk.Core.csproj" />
+    <ProjectReference Include="..\OneDesk.Platform.Win\OneDesk.Platform.Win.csproj" />
   </ItemGroup>
 
 </Project>

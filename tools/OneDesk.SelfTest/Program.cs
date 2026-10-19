@@ -43,6 +43,40 @@ Check("swap maps Ctrl to Command", KeyMap.ToMacKeyCode(0x11, 0, false, true) == 
 Check("modifier flag", KeyMap.ModifierFlag(0xA3, false) == MacModifiers.Control);
 Check("swap modifier flag", KeyMap.ModifierFlag(0x5B, true) == MacModifiers.Control);
 
+// Windows client input mapping (pure helpers, no P/Invoke)
+Check("absolute origin", WinInputMap.ToAbsolute(0d) == 0);
+Check("absolute far edge", WinInputMap.ToAbsolute(1d) == 65535);
+Check("absolute midpoint rounds up", WinInputMap.ToAbsolute(0.5d) == 32768);
+Check("absolute quarter", WinInputMap.ToAbsolute(0.25d) == 16384);
+Check("absolute clamps below", WinInputMap.ToAbsolute(-3d) == 0);
+Check("absolute clamps above", WinInputMap.ToAbsolute(4d) == 65535);
+Check("absolute rejects NaN", WinInputMap.ToAbsolute(double.NaN) == 0);
+Check("left button flags",
+    WinInputMap.ButtonFlag(1, true) == WinInputMap.LeftDown &&
+    WinInputMap.ButtonFlag(1, false) == WinInputMap.LeftUp);
+Check("right button flags",
+    WinInputMap.ButtonFlag(2, true) == WinInputMap.RightDown &&
+    WinInputMap.ButtonFlag(2, false) == WinInputMap.RightUp);
+Check("middle button flags",
+    WinInputMap.ButtonFlag(3, true) == WinInputMap.MiddleDown &&
+    WinInputMap.ButtonFlag(3, false) == WinInputMap.MiddleUp);
+Check("x button flags",
+    WinInputMap.ButtonFlag(4, true) == WinInputMap.XDown &&
+    WinInputMap.ButtonFlag(5, false) == WinInputMap.XUp);
+Check("unknown button rejected", WinInputMap.ButtonFlag(9, true) == 0);
+Check("x button data", WinInputMap.XButtonData(4) == 1 && WinInputMap.XButtonData(5) == 2);
+Check("wheel axis flags",
+    WinInputMap.WheelFlag(false) == WinInputMap.Wheel && WinInputMap.WheelFlag(true) == WinInputMap.HorizontalWheel);
+Check("scancode key down keeps extended prefix",
+    WinInputMap.KeyEventFlags(KeyFlags.Down | KeyFlags.Extended, true) ==
+    (WinInputMap.ScanCode | WinInputMap.ExtendedKey));
+Check("virtual-key event drops the extended prefix",
+    WinInputMap.KeyEventFlags(KeyFlags.Down | KeyFlags.Extended, false) == 0);
+Check("key release sets KEYEVENTF_KEYUP",
+    WinInputMap.KeyEventFlags(KeyFlags.None, true) == (WinInputMap.ScanCode | WinInputMap.KeyUp));
+Check("repeat is just another key down",
+    WinInputMap.KeyEventFlags(KeyFlags.Down | KeyFlags.Repeat, true) == WinInputMap.ScanCode);
+
 // Protocol round trips
 var messages = new[]
 {

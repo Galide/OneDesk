@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OneDeskClient</AssemblyName>
+    <RootNamespace>OneDesk.Client.Win</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>OneDesk Client</Product>
+    <Company>OneDesk</Company>
+    <Description>Share one keyboard and mouse between two Windows PCs.</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\OneDesk.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationDefaultFont>Microsoft YaHei UI, 9pt</ApplicationDefaultFont>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OneDesk.Core\OneDesk.Core.csproj" />
+    <ProjectReference Include="..\OneDesk.Platform.Win\OneDesk.Platform.Win.csproj" />
+  </ItemGroup>
+
+</Project>
