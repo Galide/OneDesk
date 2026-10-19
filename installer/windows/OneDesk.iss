@@ -40,6 +40,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\..\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[Registry]
+; OneDesk writes this value itself when "start with Windows" is enabled. The
+; installer only makes sure it does not outlive an uninstall.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OneDesk"; Flags: uninsdeletevalue dontcreatekey
+
 [Icons]
 Name: "{group}\OneDesk"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,OneDesk}"; Filename: "{uninstallexe}"
