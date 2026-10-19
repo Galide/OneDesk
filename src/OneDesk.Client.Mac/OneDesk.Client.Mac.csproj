@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OneDesk</AssemblyName>
+    <RootNamespace>OneDesk.Client</RootNamespace>
+    <Version>1.0.0</Version>
+    <Product>OneDesk</Product>
+    <Company>OneDesk</Company>
+    <Description>macOS client for OneDesk.</Description>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OneDesk.Core\OneDesk.Core.csproj" />
+  </ItemGroup>
+
+</Project>

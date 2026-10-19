@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>OneDesk __VERSION__</title>
+    <organization>com.onedesk</organization>
+    <domains enable_localSystem="true" enable_currentUserHome="false"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64"/>
+    <allowed-os-versions>
+        <os-version min="12.0"/>
+    </allowed-os-versions>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.onedesk.client"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.onedesk.client" visible="false">
+        <pkg-ref id="com.onedesk.client"/>
+    </choice>
+    <pkg-ref id="com.onedesk.client" version="__VERSION__" onConclusion="none">OneDesk.pkg</pkg-ref>
+</installer-gui-script>

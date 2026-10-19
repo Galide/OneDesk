@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OneDesk.Core</AssemblyName>
+    <RootNamespace>OneDesk.Core</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>OneDesk</Authors>
+    <Product>OneDesk</Product>
+    <Description>Cross-machine keyboard, mouse, clipboard and monitor-input switching.</Description>
+  </PropertyGroup>
+
+</Project>

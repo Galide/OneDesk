@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BD6CE074-6459-42F9-9A2A-6F7B66CBE120}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OneDesk.Core", "src\OneDesk.Core\OneDesk.Core.csproj", "{0C352118-7AB1-4CAD-B86F-9C1AC0A86825}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OneDesk.Host.Win", "src\OneDesk.Host.Win\OneDesk.Host.Win.csproj", "{29967BBC-EC91-4FC3-8D39-762238777481}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OneDesk.Client.Mac", "src\OneDesk.Client.Mac\OneDesk.Client.Mac.csproj", "{3FBDF778-6383-48D1-BF10-867B1D9D8FB2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{E2BC125F-2805-43C7-88D1-280E1C7B2FEB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OneDesk.SelfTest", "tools\OneDesk.SelfTest\OneDesk.SelfTest.csproj", "{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0C352118-7AB1-4CAD-B86F-9C1AC0A86825}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C352118-7AB1-4CAD-B86F-9C1AC0A86825}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C352118-7AB1-4CAD-B86F-9C1AC0A86825}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C352118-7AB1-4CAD-B86F-9C1AC0A86825}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29967BBC-EC91-4FC3-8D39-762238777481}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29967BBC-EC91-4FC3-8D39-762238777481}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29967BBC-EC91-4FC3-8D39-762238777481}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29967BBC-EC91-4FC3-8D39-762238777481}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FBDF778-6383-48D1-BF10-867B1D9D8FB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FBDF778-6383-48D1-BF10-867B1D9D8FB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FBDF778-6383-48D1-BF10-867B1D9D8FB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FBDF778-6383-48D1-BF10-867B1D9D8FB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0C352118-7AB1-4CAD-B86F-9C1AC0A86825} = {BD6CE074-6459-42F9-9A2A-6F7B66CBE120}
+		{29967BBC-EC91-4FC3-8D39-762238777481} = {BD6CE074-6459-42F9-9A2A-6F7B66CBE120}
+		{3FBDF778-6383-48D1-BF10-867B1D9D8FB2} = {BD6CE074-6459-42F9-9A2A-6F7B66CBE120}
+		{36F8B9AC-F75D-4EE7-8D15-A0F2C679C36B} = {E2BC125F-2805-43C7-88D1-280E1C7B2FEB}
+	EndGlobalSection
+EndGlobal

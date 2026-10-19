@@ -1,0 +1,86 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows host installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build solution
+        run: dotnet build OneDesk.sln -c Release --nologo
+
+      - name: Run protocol and config tests
+        run: dotnet run --project tools/OneDesk.SelfTest -c Release --no-build
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Publish and package
+        shell: powershell
+        run: ./installer/windows/build.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneDesk-Windows-Setup
+          path: dist/OneDesk-Setup-*.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS client package
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build macOS client
+        run: dotnet build src/OneDesk.Client.Mac/OneDesk.Client.Mac.csproj -c Release --nologo
+
+      - name: Run protocol and config tests
+        run: dotnet run --project tools/OneDesk.SelfTest -c Release
+
+      - name: Install m1ddc
+        run: brew install m1ddc
+
+      - name: Make scripts executable
+        run: chmod +x installer/macos/build.sh installer/macos/uninstall.sh installer/macos/scripts/*
+
+      - name: Validate shell scripts
+        run: |
+          bash -n installer/macos/build.sh
+          bash -n installer/macos/uninstall.sh
+          bash -n installer/macos/scripts/preinstall
+          bash -n installer/macos/scripts/postinstall
+
+      - name: Build app bundle and pkg
+        run: ./installer/macos/build.sh
+
+      - name: Smoke-test the published binary
+        run: ./publish/osx-arm64/OneDesk --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OneDesk-macOS-arm64
+          path: |
+            dist/OneDesk-*.pkg
+            dist/OneDesk-*-macOS-arm64.zip
+          if-no-files-found: error

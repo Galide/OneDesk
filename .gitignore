@@ -1,0 +1,17 @@
+# Build output
+bin/
+obj/
+publish/
+dist/
+*.user
+*.suo
+.vs/
+
+# Local configuration and logs
+config.json
+*.log
+onedesk*.txt
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,50 @@
+#!/bin/bash
+# Install the per-user LaunchAgent and start the background client.
+set -u
+
+APP="/Applications/OneDesk.app"
+EXE="$APP/Contents/MacOS/OneDesk"
+LABEL="com.onedesk.client"
+
+# The package was explicitly approved by the user. Remove the quarantine flag so the
+# ad-hoc signed app is allowed to start from /Applications.
+/usr/bin/xattr -dr com.apple.quarantine "$APP" >/dev/null 2>&1 || true
+
+console_user="$(/usr/bin/stat -f "%Su" /dev/console 2>/dev/null || true)"
+if [ -z "$console_user" ] || [ "$console_user" = "root" ] || [ "$console_user" = "loginwindow" ]; then
+    echo "OneDesk: no console user is logged in. Launch OneDesk.app once to install the login agent."
+    exit 0
+fi
+
+uid="$(/usr/bin/id -u "$console_user" 2>/dev/null || true)"
+home_dir="$(/usr/bin/dscl . -read "/Users/$console_user" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')"
+if [ -z "$uid" ] || [ -z "$home_dir" ]; then
+    echo "OneDesk: could not resolve the console user; skipping automatic login agent installation."
+    exit 0
+fi
+
+echo "OneDesk: installing login agent for $console_user (uid $uid)..."
+
+# Run as the desktop user inside their GUI session so Accessibility permission is
+# associated with the application and launchd can bootstrap the agent.
+if /bin/launchctl asuser "$uid" /usr/bin/sudo -u "$console_user" \
+    /usr/bin/env HOME="$home_dir" "$EXE" --install-agent; then
+    echo "OneDesk: login agent installed."
+else
+    echo "OneDesk: automatic agent installation failed."
+    echo "Run this command as $console_user: \"$EXE\" --install-agent"
+fi
+
+# Give the agent a moment to open its local configuration page, then show it.
+i=0
+while [ "$i" -lt 20 ]; do
+    if /usr/bin/curl -fsS --max-time 1 "http://127.0.0.1:47822/" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+    i=$((i + 1))
+done
+/bin/launchctl asuser "$uid" /usr/bin/sudo -u "$console_user" \
+    /usr/bin/open "http://127.0.0.1:47822/" >/dev/null 2>&1 || true
+
+exit 0
