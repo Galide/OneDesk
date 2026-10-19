@@ -1,16 +1,12 @@
 using Microsoft.Win32;
 using OneDesk.Core;
 
-namespace OneDesk.Client.Win;
+namespace OneDesk.App;
 
-/// <summary>
-/// Autostart for the Windows client. It uses its own Run value so a machine that runs both the
-/// host and the client does not have one overwrite the other.
-/// </summary>
 public static class Startup
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "OneDeskClient";
+    private const string ValueName = "OneDesk";
 
     public static bool IsEnabled
     {

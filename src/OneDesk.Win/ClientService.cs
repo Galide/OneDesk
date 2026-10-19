@@ -3,7 +3,7 @@ using OneDesk.Core;
 using OneDesk.Platform.Win;
 using Message = OneDesk.Core.Message;
 
-namespace OneDesk.Client.Win;
+namespace OneDesk.Client;
 
 /// <summary>
 /// The Windows side of a Windows-to-Windows pair. It connects to the machine that owns the
@@ -111,6 +111,19 @@ public sealed class ClientService : IDisposable
         else _lastError = "";
         RaiseState();
         return message;
+    }
+
+    public async Task<string> TestMonitorAsync()
+    {
+        var cfg = _config;
+        var (ok1, msg1) = await Task.Run(() => Ddc.SetInput(cfg.Monitor.MonitorIndex,
+            cfg.Monitor.MonitorNameContains, cfg.Monitor.PeerInput)).ConfigureAwait(false);
+        if (!ok1) return "切换到主机接口失败：" + msg1;
+
+        await Task.Delay(3000).ConfigureAwait(false);
+        var (ok2, msg2) = await Task.Run(() => Ddc.SetInput(cfg.Monitor.MonitorIndex,
+            cfg.Monitor.MonitorNameContains, cfg.Monitor.MyInput)).ConfigureAwait(false);
+        return $"切到主机接口成功；3 秒后切回{(ok2 ? "成功" : "失败")}：{msg2}";
     }
 
     public async Task<string> ReadInputAsync()

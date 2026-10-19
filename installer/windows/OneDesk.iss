@@ -1,4 +1,4 @@
-; OneDesk Windows host installer.
+; OneDesk Windows installer (host + client in one app).
 ; Build with: powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1
 
 #define MyAppName "OneDesk"
@@ -30,7 +30,7 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
-AppMutex=Local\OneDesk.Host
+AppMutex=Local\OneDesk
 DisableWelcomePage=no
 LicenseFile=..\..\LICENSE
 
@@ -48,7 +48,7 @@ Name: "{autodesktop}\OneDesk"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktop
 [Run]
 ; Replace any rule left by an older installation.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""OneDesk"""; Flags: runhidden waituntilterminated
-; Allow the Mac client to connect on private and domain networks only.
+; Allow the other machine to connect on private and domain networks only.
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""OneDesk"" dir=in action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=private,domain"; Flags: runhidden waituntilterminated; StatusMsg: "配置 Windows 防火墙..."
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,OneDesk}"; Flags: nowait postinstall skipifsilent
 

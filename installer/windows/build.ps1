@@ -1,14 +1,12 @@
-# Builds the self-contained Windows apps and their Inno Setup installers.
+# Builds the self-contained Windows app and its Inno Setup installer.
+# The same executable runs as host or client, chosen in the settings window.
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1
 #   powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -SkipPublish
-#   powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -Target client
 
 [CmdletBinding()]
 param(
     [switch]$SkipPublish,
-    [ValidateSet("all", "host", "client")]
-    [string]$Target = "all",
     [string]$Version = "1.0.0"
 )
 
@@ -90,28 +88,14 @@ if (-not $iscc) {
     throw "Inno Setup 6 was not found. Install it from https://jrsoftware.org/isdl.php or run: winget install JRSoftware.InnoSetup"
 }
 
-# Host: owns the keyboard and mouse, listens for the client.
-if ($Target -in @("all", "host")) {
-    $publishDir = Join-Path $root "publish\win-x64"
-    if (-not $SkipPublish) {
-        Publish-App (Join-Path $root "src\OneDesk.Host.Win\OneDesk.Host.Win.csproj") $publishDir
-    }
-
-    $exe = Join-Path $publishDir "OneDesk.exe"
-    if (-not (Test-Path $exe)) { throw "Published executable not found: $exe" }
-
-    Build-Installer (Join-Path $PSScriptRoot "OneDesk.iss") (Join-Path $distDir "OneDesk-Setup-$Version.exe")
+# One app for both roles: the settings window decides whether this machine
+# captures the keyboard/mouse (host) or receives events (client).
+$publishDir = Join-Path $root "publish\win-x64"
+if (-not $SkipPublish) {
+    Publish-App (Join-Path $root "src\OneDesk.Win\OneDesk.Win.csproj") $publishDir
 }
 
-# Client: the second Windows machine, injects the forwarded input.
-if ($Target -in @("all", "client")) {
-    $publishDir = Join-Path $root "publish\win-x64-client"
-    if (-not $SkipPublish) {
-        Publish-App (Join-Path $root "src\OneDesk.Client.Win\OneDesk.Client.Win.csproj") $publishDir
-    }
+$exe = Join-Path $publishDir "OneDesk.exe"
+if (-not (Test-Path $exe)) { throw "Published executable not found: $exe" }
 
-    $exe = Join-Path $publishDir "OneDeskClient.exe"
-    if (-not (Test-Path $exe)) { throw "Published executable not found: $exe" }
-
-    Build-Installer (Join-Path $PSScriptRoot "OneDeskClient.iss") (Join-Path $distDir "OneDeskClient-Setup-$Version.exe")
-}
+Build-Installer (Join-Path $PSScriptRoot "OneDesk.iss") (Join-Path $distDir "OneDesk-Setup-$Version.exe")

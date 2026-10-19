@@ -62,9 +62,9 @@ public sealed class HostService : IDisposable
     {
         get
         {
-            if (_remote) return "Mac 控制中";
-            if (_connected) return "已连接 Mac · Windows 本地";
-            return "等待 Mac 连接";
+            if (_remote) return "客户端控制中";
+            if (_connected) return "已连接客户端 · 本机键鼠";
+            return "等待客户端连接";
         }
     }
 
@@ -234,7 +234,7 @@ public sealed class HostService : IDisposable
                 _lastMessageTicks = Environment.TickCount64;
             }
 
-            Log.Info($"Mac 已连接: {hello.Name} ({client.Client.RemoteEndPoint})");
+            Log.Info($"客户端已连接: {hello.Name} ({client.Client.RemoteEndPoint})");
             await channel.SendAsync(new Message
             {
                 Type = MessageType.HelloAck,
@@ -313,7 +313,7 @@ public sealed class HostService : IDisposable
                     await Task.Delay(500).ConfigureAwait(false);
                     var (ok, msg) = Ddc.SetInput(_config.Monitor.MonitorIndex,
                         _config.Monitor.MonitorNameContains, _config.Monitor.MyInput);
-                    if (!ok) Log.Warn("断线后尝试切回本机输入失败（Mac 端也会尝试）: " + msg);
+                    if (!ok) Log.Warn("断线后尝试切回本机输入失败（对端也会尝试）: " + msg);
                 });
             }
 
@@ -322,7 +322,7 @@ public sealed class HostService : IDisposable
 
             if (current)
             {
-                Log.Info(wasRemote ? "Mac 连接断开，已回到本地控制" : "Mac 连接已断开");
+                Log.Info(wasRemote ? "客户端连接断开，已回到本地控制" : "对端 连接已断开");
                 RaiseState();
             }
         }
@@ -350,11 +350,11 @@ public sealed class HostService : IDisposable
                     {
                         var text = message.Text;
                         _ = Task.Run(() => WinClipboard.SetText(text));
-                        Log.Info($"已从 Mac 接收剪贴板（{text.Length} 字符）");
+                        Log.Info($"已从客户端接收剪贴板（{text.Length} 字符）");
                     }
                     break;
                 case MessageType.Error:
-                    Log.Warn("Mac 返回错误: " + message.Text);
+                    Log.Warn("客户端返回错误: " + message.Text);
                     break;
             }
         }
@@ -386,7 +386,7 @@ public sealed class HostService : IDisposable
             var idle = Environment.TickCount64 - _lastMessageTicks;
             if (idle > _config.HeartbeatTimeoutMs)
             {
-                Log.Warn($"Mac 心跳超时（{idle} ms），断开连接");
+                Log.Warn($"客户端心跳超时（{idle} ms），断开连接");
                 try
                 {
                     channel.Dispose();
@@ -466,7 +466,7 @@ public sealed class HostService : IDisposable
                 _mouseNx = nx;
                 _mouseNy = ny;
                 Interlocked.Exchange(ref _mouseDirty, 1);
-                return false; // allow the local cursor to move; the screen is showing the Mac anyway
+                return false; // allow the local cursor to move; the screen is showing the peer anyway
             case HookMouseKind.LeftDown:
                 _pressedButtons.TryAdd(1, 0);
                 Enqueue(Message.MouseButton(1, true, nx, ny));
@@ -556,7 +556,7 @@ public sealed class HostService : IDisposable
         lock (_gate) channel = _channel;
         if (channel is null || !_connected)
         {
-            NotifyError("Mac 尚未连接，请确认 Mac 端 OneDesk 已启动并配对");
+            NotifyError("客户端尚未连接，请确认 对端 OneDesk 已启动并配对");
             return;
         }
 
@@ -567,7 +567,7 @@ public sealed class HostService : IDisposable
         }
         catch (Exception ex)
         {
-            NotifyError("无法通知 Mac 接管: " + ex.Message);
+            NotifyError("无法通知客户端接管: " + ex.Message);
             return;
         }
 
@@ -586,7 +586,7 @@ public sealed class HostService : IDisposable
         _pressedButtons.Clear();
         Interlocked.Exchange(ref _mouseDirty, 0);
         RaiseState();
-        Log.Info("已切换到 Mac 控制");
+        Log.Info("已切换到客户端控制");
 
         if (_config.ClipboardSync)
         {
@@ -604,7 +604,7 @@ public sealed class HostService : IDisposable
             }
             else
             {
-                Log.Info("显示器 -> Mac: " + message);
+                Log.Info("显示器 -> 客户端: " + message);
             }
         }
     }
@@ -633,7 +633,7 @@ public sealed class HostService : IDisposable
         if (_config.Monitor.Enabled)
         {
             // This usually fails because this machine's DDC bus is not the active input.
-            // The Mac performs the authoritative switch in its Release handler; this is just a fallback.
+            // The peer performs the authoritative switch in its Release handler; this is just a fallback.
             _ = Task.Run(async () =>
             {
                 await Task.Delay(600).ConfigureAwait(false);
@@ -641,7 +641,7 @@ public sealed class HostService : IDisposable
                     _config.Monitor.MonitorNameContains, _config.Monitor.MyInput);
                 if (!ok)
                 {
-                    Log.Info("本机（非活动输入）切回失败，等待 Mac 端切回: " + message);
+                    Log.Info("本机（非活动输入）切回失败，等待 对端切回: " + message);
                 }
             });
         }
@@ -696,7 +696,7 @@ public sealed class HostService : IDisposable
         try
         {
             await channel.SendAsync(Message.Clipboard(text), CancellationToken.None).ConfigureAwait(false);
-            Log.Info($"已发送剪贴板到 Mac（{text.Length} 字符）");
+            Log.Info($"已发送剪贴板到客户端（{text.Length} 字符）");
         }
         catch (Exception ex)
         {
@@ -708,7 +708,7 @@ public sealed class HostService : IDisposable
     {
         if (!_connected)
         {
-            NotifyError("Mac 尚未连接");
+            NotifyError("客户端尚未连接");
             return;
         }
 

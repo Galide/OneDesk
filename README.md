@@ -7,7 +7,7 @@
 | 组合 | Host 安装 | Client 安装 |
 | --- | --- | --- |
 | Windows ↔ Mac | `OneDesk-Setup-*.exe` | `OneDesk-*.pkg` / zip |
-| Windows ↔ Windows | `OneDesk-Setup-*.exe` | `OneDeskClient-Setup-*.exe` |
+| Windows ↔ Windows | `OneDesk-Setup-*.exe` | 同一个 `OneDesk-Setup-*.exe`，在设置里把角色改为“客户端” |
 
 ```
         ┌──────────────────────────────┐
@@ -78,7 +78,9 @@
 
 也就是说，Windows 的 `PeerInput` 就是 Mac 的 `MyInput`，反之亦然。
 
-## 安装 Windows（Host）
+## 安装 Windows
+
+Windows 端只有**一个程序**：`OneDesk.exe`。它既可以当主机（接键盘鼠标），也可以当客户端（接收键鼠），在设置窗口顶部的“使用方式”里切换，无需分别安装两个版本。
 
 运行：
 
@@ -89,7 +91,7 @@ dist\OneDesk-Setup-1.0.0.exe
 安装程序会：
 
 - 安装到 `C:\Program Files\OneDesk`；
-- 添加入站防火墙规则（仅 **专用/域** 网络），允许 Mac 连接 TCP `47821`；
+- 添加入站防火墙规则（仅 **专用/域** 网络），允许对端连接 TCP `47821`（当客户端时这条规则不会被用到）；
 - 可选创建桌面快捷方式；
 - 安装完成后启动 OneDesk（托盘图标）。
 
@@ -97,17 +99,20 @@ dist\OneDesk-Setup-1.0.0.exe
 
 需要填写/确认：
 
-1. **配对密码**：默认随机生成 16 位。点击“复制”，稍后粘贴到 Mac 端。密码中的空格和 `-` 会被忽略，大小写不敏感。
-2. **监听端口**：默认 `47821`，两端必须一致。
-3. **显示器**：从下拉框选择支持 DDC/CI 的物理显示器。
-4. **本机接口 / Mac 接口**：选择或直接输入 VCP 值。
-5. **切换热键**：点击输入框后按下组合键；至少需要一个修饰键。
-6. **选项**：
+1. **使用方式**：有键盘鼠标的机器选“主机”，受控的机器选“客户端”。切换后保存，程序会立即停掉旧角色并启动新角色。
+2. **配对密码**：默认随机生成 16 位。点击“复制”，稍后粘贴到另一端。密码中的空格和 `-` 会被忽略，大小写不敏感。
+3. **端口**：默认 `47821`，两端必须一致。
+4. **主机地址**（仅客户端）：主机的局域网 IPv4，主机设置页的“本机地址”里可以复制。
+5. **显示器**：从下拉框选择支持 DDC/CI 的物理显示器。
+6. **本机接口 / 对端接口**：选择或输入 VCP 值（见[接线](#接线)）。
+7. **切换热键**（仅主机）：点击输入框后按下组合键；至少需要一个修饰键。
+8. **选项**：
    - 切换时同步剪贴板；
-   - 把 `Ctrl` 映射为 `Command`、`Win` 映射为 `Control`（适合 Mac 快捷键习惯）；
+   - 把 `Ctrl` 映射为 `Command`、`Win` 映射为 `Control`（仅主机 + Mac）；
+   - 启动后自动连接（仅客户端）；
    - 登录 Windows 时自动启动。
 
-点击“保存”。托盘菜单中的“开机启动”也可以随时切换。
+点击“保存”。托盘菜单中的“开机启动”也可以随时切换。托盘右键的“角色”子菜单也能直接切换主机/客户端。
 
 > 如果 Windows 网络被识别为“公用网络”，防火墙规则不会放行。请把该网络改为“专用”，或手动在 Windows 防火墙中允许 `OneDesk.exe`。
 
@@ -189,37 +194,39 @@ brew install m1ddc
 
 ## 两台 Windows 互相控制
 
-除了 macOS 客户端，仓库还提供 **Windows 客户端**（`dist\OneDeskClient-Setup-1.0.0.exe`）。有键盘鼠标的那台机器照常安装 `OneDesk-Setup-*.exe`；第二台 Windows 安装客户端版本。
+Windows 端的主机和客户端是**同一个安装包、同一个 `OneDesk.exe`**，区别只在设置里选的“使用方式”。有键盘鼠标的那台选“主机”，第二台选“客户端”。
 
-1. 在第二台 Windows 上安装客户端。首次启动会打开设置窗口，之后可以从托盘图标右键 → **设置…** 打开。
-2. 填写主机信息：
-   - **主机地址**：主机的局域网 IPv4（主机设置窗口顶部会列出）；
+1. 两台 Windows 都安装 `dist\OneDesk-Setup-1.0.0.exe`。
+2. 在第二台（客户端）上打开设置，把**使用方式**切到“客户端”。
+3. 填写主机信息：
+   - **主机地址**：主机的局域网 IPv4（主机设置页的“本机地址”里点“复制”）；
    - **端口**：与主机一致，默认 `47821`；
    - **配对密码**：粘贴主机上“复制”得到的密码。
-3. 显示器接口按实际接线填写，两台的 `MyInput` / `PeerInput` 必须**互换**：
+4. 显示器接口按实际接线填写，两台的 `MyInput` / `PeerInput` 必须**互换**：
 
    | | 主机（Windows A） | 客户端（Windows B） |
    | --- | --- | --- |
    | 本机接口 | 自己接的口，如 HDMI 1 = `17` | 自己接的口，如 DP 1 = `15` |
    | 对端接口 | 客户端接的口，如 `15` | 主机接的口，如 `17` |
 
-4. 勾选“启动后自动连接主机”，点击“保存”。
-5. 在主机上按热键切换；再按一次切回。
+5. 勾选“启动后自动连接”，点击“保存”。
+6. 在主机上按热键切换；再按一次切回。主机托盘右键的“切换控制”也可以。
 
-客户端与 macOS 客户端的工作方式相同：接管期间重放键鼠事件，释放时把显示器切回自己的接口。它只需要**出站**连接，因此不添加入站防火墙规则。
+客户端与 macOS 客户端的工作方式相同：接管期间重放键鼠事件，释放时把显示器切回自己的接口。它只需要**出站**连接，因此不添加入站防火墙规则（安装包仍会添加一条，留着也无害）。
 
 注意事项：
 
-- **管理员权限（UIPI）**：以普通权限运行的客户端无法向以管理员身份运行的前台窗口（任务管理器、UAC 提示等）注入输入。需要在那些窗口里操作时，右键客户端 → **以管理员身份运行**。安装包本身不要求常驻管理员权限，开机启动也不会弹 UAC。
-- 主机和客户端不要运行在同一台机器上，否则会互相抢输入。
-- 客户端的 `Ctrl ↔ Command` 交换、滚动反转不生效——这两个选项只对 macOS 有意义，客户端设置里也不提供。
+- **管理员权限（UIPI）**：以普通权限运行的客户端无法向以管理员身份运行的前台窗口（任务管理器、UAC 提示等）注入输入。需要在那些窗口里操作时，用 `OneDesk.exe` 的快捷方式 → **以管理员身份运行**。安装包本身不要求常驻管理员权限，开机启动也不会弹 UAC。
+- 设置里选“客户端”的机器不要再接同一套键盘鼠标，否则会互相抢输入。
+- 客户端的 `Ctrl ↔ Command` 交换、滚动反转不生效——这两个选项只对 macOS 有意义，客户端模式下也不会显示。
 - 鼠标使用绝对坐标，只映射到客户端的**主显示器**。客户端接多显示器时，指针只会落在主屏。
 - 显示器输入切换同样要求客户端的显示器接口支持 DDC/CI 写入；Windows 端没有 m1ddc 那类 HDMI 限制，但部分显示器的 HDMI 口仍然拒绝 DDC 写入。
+- 从旧版本升级：如果之前装过单独的 `OneDeskClient-Setup-*.exe`，先在“应用”里卸载它，再安装统一的 `OneDesk-Setup-*.exe`。
 
 ## 配对与首次使用
 
 1. Windows 托盘菜单 → **设置…**，复制配对密码，确认端口（默认 `47821`）。
-2. Windows 设置窗口顶部的“本机 IPv4”会列出局域网地址。
+2. Windows 设置窗口的“本机地址”一行会列出局域网 IPv4，点“复制”即可。
 3. Mac 配置页填入同一个 IP、端口和密码，保存。
 4. 配置页应显示“已连接”。如果没有，见[故障排查](#故障排查)。
 5. 在 Windows 上按 `Ctrl + Alt + Space`：
@@ -311,7 +318,7 @@ open /Applications/OneDesk.app
 
 ### Windows
 
-设置 → 应用 → **OneDesk**（主机）或 **OneDesk Client**（客户端）→ 卸载。主机安装程序会删除防火墙规则，客户端卸载会删除开机启动项。用户配置和日志保留在 `%APPDATA%\OneDesk`，需要时手动删除。
+设置 → 应用 → **OneDesk** → 卸载。安装程序会删除防火墙规则和开机启动项。用户配置和日志保留在 `%APPDATA%\OneDesk`，需要时手动删除。
 
 ### macOS
 
@@ -343,17 +350,9 @@ dotnet run --project tools/OneDesk.SelfTest -c Release
 powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1
 ```
 
-产物（自包含，各约 58 MB）：
+产物（自包含，约 58 MB）：
 
-- `dist\OneDesk-Setup-1.0.0.exe`（主机）
-- `dist\OneDeskClient-Setup-1.0.0.exe`（Windows 客户端）
-
-只构建其中一个：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -Target host
-powershell -ExecutionPolicy Bypass -File installer\windows\build.ps1 -Target client
-```
+- `dist\OneDesk-Setup-1.0.0.exe`（主机 + 客户端同一个程序）
 
 ### macOS
 
@@ -382,12 +381,12 @@ export PKG_SIGN_IDENTITY="Developer ID Installer: Your Name (TEAMID)"
 
 ### GitHub Actions
 
-`.github/workflows/build.yml` 会在以下环境构建三个安装包：
+`.github/workflows/build.yml` 会在以下环境构建安装包：
 
-- `windows-latest`：构建、运行自测、用 Inno Setup 打包主机和 Windows 客户端；
+- `windows-latest`：构建、运行自测、用 Inno Setup 打包 Windows 安装程序；
 - `macos-15`（Apple Silicon）：构建、运行自测、`brew install m1ddc`、生成 `.pkg` 和 `.zip`。
 
-推送代码或手动触发 workflow 后，从 Actions 页面下载 `OneDesk-Windows-Setup`（含两个 exe）和 `OneDesk-macOS-arm64` 两个 artifact。
+推送代码或手动触发 workflow 后，从 Actions 页面下载 `OneDesk-Windows-Setup` 和 `OneDesk-macOS-arm64` 两个 artifact。
 
 ### 测试
 
@@ -402,11 +401,10 @@ dotnet run --project tools/OneDesk.SelfTest
 ```
 src/OneDesk.Core/           配置、日志、协议、加密、键位/坐标映射、本地 Web 服务
 src/OneDesk.Platform.Win/   Windows 公共层：SendInput 注入、DDC/CI、剪贴板
-src/OneDesk.Host.Win/       Windows 托盘程序（主机）、全局钩子
+src/OneDesk.Win/            Windows 托盘程序：主机（全局钩子）与客户端（连接/重放）二合一
 src/OneDesk.Client.Mac/     macOS 守护进程、CoreGraphics 注入、m1ddc、LaunchAgent
-src/OneDesk.Client.Win/     Windows 托盘程序（客户端）、连接与重放
 tools/OneDesk.SelfTest/     无第三方依赖的自测
-installer/windows/          Inno Setup 脚本（主机 + 客户端）与构建脚本
+installer/windows/          Inno Setup 脚本与构建脚本
 installer/macos/            Info.plist、pkg 脚本、构建/卸载脚本
 .github/workflows/          Windows + macOS 自动构建
 ```

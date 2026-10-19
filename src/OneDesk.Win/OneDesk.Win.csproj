@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,11 +8,11 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AssemblyName>OneDesk</AssemblyName>
-    <RootNamespace>OneDesk.Host</RootNamespace>
+    <RootNamespace>OneDesk</RootNamespace>
     <Version>1.0.0</Version>
     <Product>OneDesk</Product>
     <Company>OneDesk</Company>
-    <Description>Control a Mac from a Windows keyboard and mouse.</Description>
+    <Description>Share one keyboard, mouse and monitor between two computers.</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\..\assets\OneDesk.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

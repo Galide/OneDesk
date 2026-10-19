@@ -1,19 +1,21 @@
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
 using OneDesk.Core;
 using OneDesk.Platform.Win;
 
-namespace OneDesk.Host;
+namespace OneDesk.App;
 
 internal static class Program
 {
     [DllImport("kernel32.dll")]
     private static extern bool AttachConsole(int dwProcessId);
 
+    private const string MutexName = @"Local\OneDesk";
+
     [STAThread]
     private static void Main(string[] args)
     {
-        if (args.Contains("--list-monitors") || args.Contains("--get-input") || args.Contains("--set-input"))
+        if (args.Any(a => a is "--list-monitors" or "--get-input" or "--set-input" or "--status"
+                or "--help" or "/?" or "-h"))
         {
             RunConsoleCommand(args);
             return;
@@ -22,7 +24,7 @@ internal static class Program
         ApplicationConfiguration.Initialize();
         Log.Init();
 
-        using var mutex = new Mutex(true, @"Local\OneDesk.Host", out var isNew);
+        using var mutex = new Mutex(true, MutexName, out var isNew);
         if (!isNew)
         {
             if (!args.Contains("--minimized"))
@@ -36,10 +38,16 @@ internal static class Program
 
         var firstRun = !File.Exists(AppConfig.ConfigPath);
         var config = AppConfig.Load();
-        if (config.Role != AppRole.Host)
+        if (firstRun)
         {
-            config.Role = AppRole.Host;
-            config.Save();
+            try
+            {
+                config.Save();
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("保存初始配置失败: " + ex.Message);
+            }
         }
 
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -56,9 +64,9 @@ internal static class Program
 
         if (firstRun) Startup.SetEnabled(config.StartAutomatically);
 
-        using var service = new HostService(config);
-        service.Start();
-        using var tray = new TrayApp(service, firstRun);
+        using var app = new AppHost(config);
+        app.Start();
+        using var tray = new TrayApp(app, firstRun);
         Application.Run(tray);
     }
 
@@ -76,6 +84,37 @@ internal static class Program
         }
 
         var config = AppConfig.Load();
+
+        if (args.Contains("--help") || args.Contains("/?") || args.Contains("-h"))
+        {
+            Console.WriteLine("OneDesk — 一套键盘鼠标，控制两台电脑");
+            Console.WriteLine();
+            Console.WriteLine("用法:");
+            Console.WriteLine("  OneDesk.exe                     启动托盘程序（主机 / 客户端由设置决定）");
+            Console.WriteLine("  OneDesk.exe --minimized         静默启动（登录时使用）");
+            Console.WriteLine("  OneDesk.exe --status            显示当前角色、密码和显示器配置");
+            Console.WriteLine("  OneDesk.exe --list-monitors     列出支持 DDC/CI 的显示器");
+            Console.WriteLine("  OneDesk.exe --get-input         读取显示器当前输入源");
+            Console.WriteLine("  OneDesk.exe --set-input <值>    切换显示器输入源，例如 --set-input 17");
+            return;
+        }
+
+        if (args.Contains("--status"))
+        {
+            Console.WriteLine($"角色: {(config.Role == AppRole.Host ? "主机" : "客户端")}");
+            Console.WriteLine($"配置文件: {AppConfig.ConfigPath}");
+            Console.WriteLine($"配对密码: {config.GroupedPassword()}");
+            Console.WriteLine($"端口: {config.Port}");
+            if (config.Role == AppRole.Client) Console.WriteLine($"主机地址: {config.PeerHost}");
+            else Console.WriteLine($"本机地址: {string.Join(", ", AppConfig.LocalIPv4Addresses())}");
+            Console.WriteLine($"本机接口: {Ddc.InputName(config.Monitor.MyInput)} ({config.Monitor.MyInput})");
+            Console.WriteLine($"对端接口: {Ddc.InputName(config.Monitor.PeerInput)} ({config.Monitor.PeerInput})");
+            Console.WriteLine($"自动切换显示器: {(config.Monitor.Enabled ? "开" : "关")}");
+            Console.WriteLine($"同步剪贴板: {(config.ClipboardSync ? "开" : "关")}");
+            Console.WriteLine($"开机启动: {(Startup.IsEnabled ? "开" : "关")}");
+            return;
+        }
+
         if (args.Contains("--list-monitors"))
         {
             var monitors = Ddc.ListMonitors(true);
@@ -86,7 +125,7 @@ internal static class Program
 
         if (args.Contains("--get-input"))
         {
-            var (value, message) = Ddc.GetInput(config.Monitor.MonitorIndex, config.Monitor.MonitorNameContains);
+            var (_, message) = Ddc.GetInput(config.Monitor.MonitorIndex, config.Monitor.MonitorNameContains);
             Console.WriteLine(message);
             return;
         }
