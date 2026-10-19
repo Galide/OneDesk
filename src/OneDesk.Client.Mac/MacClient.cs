@@ -66,35 +66,6 @@ public sealed class MacClient : IAsyncDisposable
         }
     }
 
-    public void ApplyConfig(AppConfig config)
-    {
-        config.Role = AppRole.Client;
-        config.Normalize();
-        config.Save();
-
-        var old = _config;
-        if (_hasControl)
-        {
-            _hasControl = false;
-            try
-            {
-                _input.ReleaseAll();
-            }
-            catch
-            {
-                // ignored
-            }
-
-            SwitchMonitor(old.Monitor.PeerInput, old);
-        }
-
-        _config = config.Clone();
-        _input.Configure(_config.InvertScroll);
-        RestartSession();
-        RaiseState();
-        Log.Info("配置已更新，连接将重新建立");
-    }
-
     public async Task<string> TestSwitchAsync(int input)
     {
         var cfg = _config;
@@ -133,22 +104,6 @@ public sealed class MacClient : IAsyncDisposable
             return "发送失败: " + ex.Message;
         }
     }
-
-    public object BuildStatus() => new
-    {
-        hostname = Environment.MachineName,
-        connected = _connected,
-        controlled = _hasControl,
-        accessibility = MacPermissions.HasAccess,
-        autoConnect = _config.AutoConnect,
-        display = _display,
-        ddc = _lastDdc,
-        lastError = _lastError,
-        peer = _config.PeerHost,
-        configPath = AppConfig.ConfigPath,
-        m1ddc = _ddc.Available,
-        m1ddcPath = _ddc.Path
-    };
 
     private async Task ConnectionLoopAsync(CancellationToken ct)
     {

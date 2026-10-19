@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using OneDesk.Core;
@@ -76,6 +77,84 @@ Check("key release sets KEYEVENTF_KEYUP",
     WinInputMap.KeyEventFlags(KeyFlags.None, true) == (WinInputMap.ScanCode | WinInputMap.KeyUp));
 Check("repeat is just another key down",
     WinInputMap.KeyEventFlags(KeyFlags.Down | KeyFlags.Repeat, true) == WinInputMap.ScanCode);
+
+// macOS host key mapping
+Check("mac A maps to Windows VK/scan",
+    MacKeyMap.TryMap(0, out var macA, out var macAScan, out var macAExt) &&
+    macA == 0x41 && macAScan == 0x1E && !macAExt);
+Check("mac 55 is left command",
+    MacKeyMap.TryMap(55, out var cmd, out var cmdScan, out var cmdExt) &&
+    cmd == 0x5B && cmdScan == 0x5B && cmdExt);
+Check("mac 54 is right command",
+    MacKeyMap.TryMap(54, out var rcmd, out _, out _) && rcmd == 0x5C);
+Check("mac 59 is left control, mac 62 right control",
+    MacKeyMap.TryMap(59, out var lctl, out var lctlScan, out var lctlExt) && lctl == 0xA2 && lctlScan == 0x1D && !lctlExt &&
+    MacKeyMap.TryMap(62, out var rctl, out var rctlScan, out var rctlExt) && rctl == 0xA3 && rctlScan == 0x1D && rctlExt);
+Check("mac 58 is left option, mac 61 right option",
+    MacKeyMap.TryMap(58, out var lalt, out var laltScan, out var laltExt) && lalt == 0xA4 && laltScan == 0x38 && !laltExt &&
+    MacKeyMap.TryMap(61, out var ralt, out var raltScan, out var raltExt) && ralt == 0xA5 && raltScan == 0x38 && raltExt);
+Check("mac 123 is left arrow (extended)",
+    MacKeyMap.TryMap(123, out var left, out var leftScan, out var leftExt) &&
+    left == 0x25 && leftScan == 0x4B && leftExt);
+Check("mac 126 is up arrow (extended)",
+    MacKeyMap.TryMap(126, out var up, out _, out var upExt) && up == 0x26 && upExt);
+Check("mac 117 is forward delete (extended)",
+    MacKeyMap.TryMap(117, out var fdel, out var fdelScan, out var fdelExt) &&
+    fdel == 0x2E && fdelScan == 0x53 && fdelExt);
+Check("mac 76 is keypad enter (extended enter)",
+    MacKeyMap.TryMap(76, out var nent, out var nentScan, out var nentExt) &&
+    nent == 0x0D && nentScan == 0x1C && nentExt);
+Check("mac F1..F12 map to VK_F1..F12",
+    MacKeyMap.TryMap(122, out var f1, out _, out _) && f1 == 0x70 &&
+    MacKeyMap.TryMap(120, out var f2, out _, out _) && f2 == 0x71 &&
+    MacKeyMap.TryMap(111, out var f12, out _, out _) && f12 == 0x7B);
+Check("mac modifiers are recognised as FlagsChanged keys",
+    MacKeyMap.IsModifier(55) && MacKeyMap.IsModifier(62) && !MacKeyMap.IsModifier(0));
+Check("unknown mac key is rejected", !MacKeyMap.TryMap(63, out _, out _, out _)); // Fn
+Check("hotkey matches mac key with modifiers",
+    MacKeyMap.MatchesHotkey(new HotkeySpec { Ctrl = true, Alt = true, VirtualKey = 0x20 },
+        49, ctrl: true, alt: true, shift: false, command: false) &&
+    !MacKeyMap.MatchesHotkey(new HotkeySpec { Ctrl = true, Alt = true, VirtualKey = 0x20 },
+        49, ctrl: true, alt: false, shift: false, command: false));
+
+// Every key the Windows client can be told about must have a scan code for the macOS host,
+// and every key the macOS host produces must be reachable in the shared table.
+var missingScan = KeyMap.SimplePairs.Select(pair => pair.Key)
+    .Where(vk => !ScanMap.TryGet(vk, out var scan, out _) || scan == 0)
+    .ToList();
+Check("every client mappable VK has a scan code", missingScan.Count == 0, string.Join(",", missingScan));
+
+var unmapped = new List<string>();
+foreach (var (macKey, vk) in MacKeyMap.Pairs)
+{
+    if (!MacKeyMap.TryMap(macKey, out var mapped, out var scan, out _) || mapped != vk || scan == 0)
+    {
+        unmapped.Add($"0x{macKey:X2}");
+    }
+}
+Check("every macOS key maps to a scan code", unmapped.Count == 0, string.Join(",", unmapped));
+
+if (OperatingSystem.IsWindows())
+{
+    // The authoritative check: the scan codes the Windows client replays with SendInput.
+    var mismatches = new List<string>();
+    foreach (var (vk, expected) in ScanMap.All)
+    {
+        var packed = TestNative.MapVirtualKey((uint)vk, 4 /* MAPVK_VK_TO_VSC_EX */);
+        var scan = (int)(packed & 0xFF);
+        var winExtended = (packed >> 8) == 0xE0;
+        // MapVirtualKey only sets the E0 prefix for keys that exist *solely* in the extended
+        // set (right Ctrl/Alt, Windows, divide). For the navigation keys it returns the base
+        // code even though SendInput needs the prefix, so the flag is only checked one way.
+        if (scan != expected.Scan || (winExtended && !expected.Extended))
+        {
+            mismatches.Add($"0x{vk:X2}: table=0x{expected.Scan:X2}{(expected.Extended ? "+E0" : "")} " +
+                           $"win=0x{scan:X2}{(winExtended ? "+E0" : "")}");
+        }
+    }
+
+    Check("scan codes agree with MapVirtualKey", mismatches.Count == 0, string.Join(" | ", mismatches));
+}
 
 // Protocol round trips
 var messages = new[]
@@ -211,6 +290,7 @@ finally
 var webConfig = new AppConfig { Password = "web-test-password", PeerHost = "10.0.0.5" };
 webConfig.Normalize();
 var webApplied = false;
+var webRole = AppRole.Client;
 var portProbe = new TcpListener(IPAddress.Loopback, 0);
 portProbe.Start();
 var webPort = ((IPEndPoint)portProbe.LocalEndpoint).Port;
@@ -225,6 +305,7 @@ try
         cfg =>
         {
             webApplied = cfg.PeerHost == "10.0.0.7" && cfg.Monitor.MyInput == 16;
+            webRole = cfg.Role;
             return null;
         },
         _ => "ok",
@@ -235,6 +316,9 @@ try
     var html = await http.GetStringAsync("");
     var tokenMatch = System.Text.RegularExpressions.Regex.Match(html, "const TOKEN = \"([0-9a-f]+)\";");
     Check("web UI serves token", tokenMatch.Success);
+    Check("web UI offers the role switch",
+        html.Contains("id=\"role\"") && html.Contains("value=\"Host\"") &&
+        html.Contains("id=\"toggleBtn\"") && html.Contains("id=\"roleName\""));
 
     using var getRequest = new HttpRequestMessage(HttpMethod.Get, "api/config");
     getRequest.Headers.Add("X-OneDesk-Token", tokenMatch.Groups[1].Value);
@@ -251,12 +335,14 @@ try
 
     using var postRequest = new HttpRequestMessage(HttpMethod.Post, "api/config")
     {
-        Content = new StringContent("{\"peerHost\":\"10.0.0.7\",\"monitor\":{\"myInput\":16}}",
+        Content = new StringContent(
+            "{\"role\":\"Host\",\"peerHost\":\"10.0.0.7\",\"monitor\":{\"myInput\":16}}",
             Encoding.UTF8, "application/json")
     };
     postRequest.Headers.Add("X-OneDesk-Token", tokenMatch.Groups[1].Value);
     var postResponse = await http.SendAsync(postRequest);
     Check("web config POST accepted", postResponse.IsSuccessStatusCode && webApplied);
+    Check("web config POST carries the role", webRole == AppRole.Host);
 
     using var unauthorized = new HttpRequestMessage(HttpMethod.Get, "api/config");
     var unauthorizedResponse = await http.SendAsync(unauthorized);
@@ -276,3 +362,10 @@ if (failures == 0)
 
 Console.WriteLine($"{failures} test(s) failed.");
 return 1;
+
+internal static class TestNative
+{
+    /// <summary>MAPVK_VK_TO_VSC_EX: low byte = scan code, 0xE0 in the high byte = extended.</summary>
+    [DllImport("user32.dll")]
+    internal static extern uint MapVirtualKey(uint code, uint mapType);
+}

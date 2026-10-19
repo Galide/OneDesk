@@ -55,12 +55,15 @@ internal static class Program
 OneDesk macOS 端
 
   --daemon            后台运行（launchd 使用）
-  --setup             终端向导，配置 Windows 地址、密码和显示器输入
+  --setup             终端向导，配置角色、密码和显示器输入
   --install-agent     安装并启动 ~/Library/LaunchAgents 登录代理
   --uninstall-agent   停止并删除登录代理
   --list-displays     列出 CoreGraphics 显示器和 m1ddc 显示器
   --test-ddc <值>     直接测试 DDC 输入切换（15=DP1, 17=HDMI1, 18=HDMI2）
   --status            显示配置和显示器信息
+
+同一份程序既可以是主机（键盘鼠标插在 Mac 上）也可以是客户端（受 Windows 控制），
+在配置面板里随时切换角色。
 
 配置面板： http://127.0.0.1:47822/
 日志：     ~/Library/Logs/OneDesk/client.log
@@ -84,24 +87,17 @@ OneDesk macOS 端
 
         await using var _ = lockFile;
         var config = AppConfig.Load();
-        if (config.Role != AppRole.Client)
-        {
-            config.Role = AppRole.Client;
-            config.Save();
-        }
-
-        MacPermissions.Request();
-        var client = new MacClient(config);
+        var agent = new MacAgent(config);
         LocalWebServer? web = null;
 
         try
         {
             web = new LocalWebServer(
                 config.WebPort,
-                client.BuildStatus,
-                () => client.Config,
-                SaveConfig(client),
-                name => RunWebAction(client, name),
+                agent.BuildStatus,
+                () => agent.Config,
+                cfg => agent.Save(cfg),
+                name => agent.RunAction(name),
                 () => Log.Tail(500));
             web.Start();
         }
@@ -110,9 +106,10 @@ OneDesk macOS 端
             Log.Error("启动配置网页失败（端口被占用？）: " + ex.Message);
         }
 
-        client.Start();
-        Log.Info($"OneDesk Client 已启动，配置: {AppConfig.ConfigPath}");
-        if (string.IsNullOrWhiteSpace(config.PeerHost))
+        agent.Start();
+        Log.Info($"OneDesk 已启动（{(config.Role == AppRole.Host ? "主机" : "客户端")}），" +
+                 $"配置: {AppConfig.ConfigPath}");
+        if (config.Role == AppRole.Client && string.IsNullOrWhiteSpace(config.PeerHost))
         {
             Log.Warn("尚未配置 Windows 地址，请打开 http://127.0.0.1:" + config.WebPort + "/ 进行设置");
         }
@@ -142,69 +139,9 @@ OneDesk macOS 端
 
         await exit.Task.ConfigureAwait(false);
         Log.Info("正在退出…");
-        await client.DisposeAsync().ConfigureAwait(false);
+        await agent.DisposeAsync().ConfigureAwait(false);
         if (web is not null) await web.DisposeAsync().ConfigureAwait(false);
         return 0;
-    }
-
-    private static Func<AppConfig, string?> SaveConfig(MacClient client)
-    {
-        return config =>
-        {
-            try
-            {
-                config.Role = AppRole.Client;
-                config.Normalize();
-                if (config.Port is < 1024 or > 65535) return "端口无效";
-                if (config.Password.Length < 8) return "配对密码至少需要 8 个字符";
-                if (config.AutoConnect && string.IsNullOrWhiteSpace(config.PeerHost))
-                {
-                    return "请填写 Windows 主机地址";
-                }
-
-                client.ApplyConfig(config);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                return ex.Message;
-            }
-        };
-    }
-
-    private static string RunWebAction(MacClient client, string name)
-    {
-        try
-        {
-            switch (name)
-            {
-                case "reconnect":
-                    client.RestartSession();
-                    return "正在重新连接…";
-                case "test-my":
-                    return client.TestSwitchAsync(client.Config.Monitor.MyInput).GetAwaiter().GetResult();
-                case "test-peer":
-                {
-                    var peer = client.Config.Monitor.PeerInput;
-                    var mine = client.Config.Monitor.MyInput;
-                    var first = client.TestSwitchAsync(peer).GetAwaiter().GetResult();
-                    Thread.Sleep(3000);
-                    var second = client.TestSwitchAsync(mine).GetAwaiter().GetResult();
-                    return first + "；3 秒后切回：" + second;
-                }
-                case "sync-clipboard":
-                    return client.SendClipboardToHostAsync().GetAwaiter().GetResult();
-                case "open-accessibility":
-                    MacPermissions.OpenSettings();
-                    return "已打开系统设置";
-                default:
-                    return "未知操作";
-            }
-        }
-        catch (Exception ex)
-        {
-            return "操作失败: " + ex.Message;
-        }
     }
 
     private static int Setup()
@@ -216,11 +153,18 @@ OneDesk macOS 端
         }
 
         var config = AppConfig.Load();
-        config.Role = AppRole.Client;
 
         Console.WriteLine("OneDesk macOS 配置向导");
         Console.WriteLine("========================");
-        config.PeerHost = Prompt("Windows 主机 IP", config.PeerHost);
+        var role = Prompt("键盘鼠标插在这台 Mac 上吗？(y=主机 / n=客户端)",
+            config.Role == AppRole.Host ? "y" : "n").Trim().ToLowerInvariant();
+        config.Role = role is "y" or "yes" or "host" ? AppRole.Host : AppRole.Client;
+
+        if (config.Role == AppRole.Client)
+        {
+            config.PeerHost = Prompt("对端主机 IP（插着键盘鼠标的那台）", config.PeerHost);
+        }
+
         config.Port = PromptInt("端口", config.Port, 1024, 65535);
 
         var password = Prompt("配对密码（留空则使用当前密码）", config.Password);
@@ -250,7 +194,16 @@ OneDesk macOS 端
         config.Save();
         Console.WriteLine();
         Console.WriteLine("配置已保存: " + AppConfig.ConfigPath);
+        Console.WriteLine("本机角色: " + (config.Role == AppRole.Host ? "主机（键盘鼠标在本机）" : "客户端（受另一台控制）"));
         Console.WriteLine("配对密码: " + config.GroupedPassword());
+
+        if (config.Role == AppRole.Host)
+        {
+            foreach (var address in AppConfig.LocalIPv4Addresses())
+            {
+                Console.WriteLine("在另一台电脑上填写主机地址: " + address);
+            }
+        }
 
         if (PromptBool("安装并启动登录代理", true))
         {
@@ -394,10 +347,22 @@ OneDesk macOS 端
         var config = AppConfig.Load();
         var ddc = new MacDdc();
         Console.WriteLine("配置文件: " + AppConfig.ConfigPath);
-        Console.WriteLine("Windows:  " + (string.IsNullOrWhiteSpace(config.PeerHost) ? "未配置" : config.PeerHost));
+        Console.WriteLine("本机角色: " + (config.Role == AppRole.Host ? "主机（键盘鼠标在本机）" : "客户端（受另一台控制）"));
+        if (config.Role == AppRole.Client)
+        {
+            Console.WriteLine("对端主机: " + (string.IsNullOrWhiteSpace(config.PeerHost) ? "未配置" : config.PeerHost));
+        }
+        else
+        {
+            var addresses = AppConfig.LocalIPv4Addresses();
+            Console.WriteLine("本机地址: " + (addresses.Count > 0 ? string.Join(", ", addresses) : "未检测到"));
+        }
+
         Console.WriteLine("端口:     " + config.Port);
+        Console.WriteLine("配对密码: " + config.GroupedPassword());
+        Console.WriteLine("热键:     " + config.Hotkey.Describe());
         Console.WriteLine("Mac 接口: " + config.Monitor.MyInput);
-        Console.WriteLine("Win 接口: " + config.Monitor.PeerInput);
+        Console.WriteLine("对端接口: " + config.Monitor.PeerInput);
         Console.WriteLine("m1ddc:    " + (ddc.Available ? ddc.Path : "未找到"));
         Console.WriteLine("辅助功能: " + (MacPermissions.HasAccess ? "已授权" : "未授权"));
         Console.WriteLine();

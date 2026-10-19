@@ -2,25 +2,28 @@
 
 用一套键盘鼠标同时操作 **Windows PC** 和 **Apple Silicon Mac**（或另一台 Windows PC），并在两台机器共用的显示器上自动切换输入源。
 
-有键盘鼠标的那台机器作为 Host，另一台作为 Client（接收按键、鼠标和剪贴板）。按一次热键即可切换控制权；显示器通过 DDC/CI 自动切换，不需要额外的 KVM 硬件。
+**键盘鼠标插在哪一台，哪一台就是 Host**，另一台作为 Client（接收按键、鼠标和剪贴板）。Windows 和 macOS 两端都可以当 Host，也都可以当 Client；按一次热键即可切换控制权，显示器通过 DDC/CI 自动切换，不需要额外的 KVM 硬件。
 
-| 组合 | Host 安装 | Client 安装 |
+| 组合 | Host | Client |
 | --- | --- | --- |
-| Windows ↔ Mac | `OneDesk-Setup-*.exe` | `OneDesk-*.pkg` / zip |
-| Windows ↔ Windows | `OneDesk-Setup-*.exe` | 同一个 `OneDesk-Setup-*.exe`，在设置里把角色改为“客户端” |
+| 键鼠在 Windows | `OneDesk-Setup-*.exe` | `OneDesk-*.pkg` / zip，或 Windows 那个安装包 |
+| 键鼠在 Mac | `OneDesk-*.pkg` / zip | `OneDesk-Setup-*.exe` |
+| 两台 Windows | `OneDesk-Setup-*.exe` | 同一个 `OneDesk-Setup-*.exe`，在设置里把角色改为“客户端” |
+
+两个方向是对称的，只有“谁捕获键鼠、谁注入键鼠”互换：
 
 ```
         ┌──────────────────────────────┐
         │           显示器              │
-        │   DP 1  ←──── Windows         │
-        │   HDMI 1 ←──── Mac            │
+        │   HDMI 1 ←──── Windows        │
+        │   DP 1   ←──── Mac            │
         └──────────────────────────────┘
                  ▲            ▲
                  │ DDC/CI     │ DDC/CI (m1ddc)
         ┌────────┴──────┐  ┌──┴─────────────┐
-        │ Windows Host  │  │ macOS Client   │
-        │ 键盘 / 鼠标    │  │ 注入键鼠事件    │
-        │ 全局钩子       │  │ 辅助功能权限    │
+        │ Windows       │  │ macOS          │
+        │ 主机：全局钩子 │  │ 客户端：注入    │
+        │ 客户端：注入   │  │ 主机：事件监听  │
         └───────┬───────┘  └───────┬────────┘
                 └──── 局域网 TCP ────┘
                    AES-256-GCM
@@ -28,22 +31,22 @@
 
 ## 功能
 
-- **一键切换**：默认 `Ctrl + Alt + Space`，可自定义。
-- **键鼠转发**：Windows 捕获并屏蔽输入，Mac 通过 CoreGraphics、第二台 Windows 通过 `SendInput` 注入；支持组合键、鼠标按键、滚轮和横向滚轮。
-- **剪贴板**：切换时双向同步纯文本；也可从托盘菜单手动发送。
-- **显示器输入切换**：
-  - Windows → Mac：Windows 侧通过 DDC/CI 切换到 Mac 所在的接口。
-  - Mac → Windows：Mac 侧通过 `m1ddc` 切回 Windows 所在的接口。
-- **断线回退**：连接中断时 Mac 自动释放所有按下的键并尝试切回 Windows；Windows 恢复本地鼠标位置。
+- **一键切换**：默认 `Ctrl + Alt + Space`，可自定义；Mac 上 `Command` 相当于 Windows 键。
+- **键鼠转发**：主机端捕获并屏蔽本地输入（Windows 用全局钩子，macOS 用 `CGEventTap`），客户端通过 CoreGraphics 或 `SendInput` 注入；支持组合键、鼠标按键、滚轮和横向滚轮。
+- **剪贴板**：切换时双向同步纯文本；也可从 Windows 托盘菜单或 Mac 配置页手动发送。
+- **显示器输入切换**（主机进入控制时切到对端接口，退出时由客户端切回主机接口）：
+  - Windows 侧通过 DDC/CI 切换。
+  - Mac 侧通过 `m1ddc` 切换。
+- **断线回退**：连接中断时注入端释放所有按下的键，捕获端尝试把显示器切回自己。
 - **加密传输**：AES-256-GCM，PBKDF2-SHA256（120,000 次迭代），每次连接使用随机盐和递增序号。
 - **托盘常驻**：Windows 端无主窗口，配置、日志、开机启动都在托盘菜单里。
-- **本地配置页**：Mac 端只监听 `127.0.0.1:47822`，用浏览器配置，不向局域网暴露管理接口。
+- **本地配置页**：Mac 端只监听 `127.0.0.1:47822`，用浏览器配置角色和参数，不向局域网暴露管理接口。
 
 ## 环境要求
 
 | 项目 | 要求 |
 | --- | --- |
-| Windows（Host 或 Windows 客户端） | Windows 10 1809 或更高版本，x64 |
+| Windows | Windows 10 1809 或更高版本，x64 |
 | macOS | macOS 12 或更高版本，**Apple Silicon（arm64）** |
 | 网络 | 两台机器在同一局域网；建议使用有线网络或稳定的 5 GHz Wi-Fi |
 | 显示器 | 支持 DDC/CI，并在 OSD 菜单中启用 DDC/CI |
@@ -54,7 +57,7 @@
 ## 接线
 
 1. **Mac 用雷电 / USB-C 转 DisplayPort 连接显示器，Windows 用 HDMI**（也可以反过来，接口值稍后配置即可）。
-2. 键盘、鼠标接收器/线缆接在 **Windows** 上。
+2. 键盘、鼠标接收器/线缆接在**任意一台**上——接在哪台，哪台就是主机。蓝牙键鼠也支持（macOS 主机时通过 `CGEventTap` 捕获，Windows 主机时通过全局钩子）。
 3. 两台机器接入同一局域网。
 4. 在显示器 OSD 中打开 **DDC/CI**。部分显示器还需要把 DisplayPort 版本设为 1.2/1.4，或关闭“深度睡眠”。
 
@@ -130,15 +133,18 @@ OneDesk.exe --set-input 17
 
 日志：`%APPDATA%\OneDesk\logs\onedesk.log`
 
-## 安装 macOS（Client）
+## 安装 macOS（主机或客户端）
 
 ### 方式 A：pkg 安装包（推荐）
 
 1. 在 Mac 上双击 `OneDesk-1.0.0.pkg`。
 2. 如果提示“无法打开，因为 Apple 无法检查其是否包含恶意软件”，打开 **系统设置 → 隐私与安全性**，在底部点击 **仍要打开**；或者右键 pkg → **打开**。
-3. 安装完成后，安装脚本会为当前登录用户安装 LaunchAgent 并启动后台客户端，然后打开配置页 `http://127.0.0.1:47822/`。
+3. 安装完成后，安装脚本会为当前登录用户安装 LaunchAgent 并启动后台服务，然后打开配置页 `http://127.0.0.1:47822/`。
 4. 首次运行会请求 **辅助功能** 权限。到 **系统设置 → 隐私与安全性 → 辅助功能**，勾选 **OneDesk**。如果没有出现，点击配置页里的“打开辅助功能设置”，或手动添加 `/Applications/OneDesk.app`。
-5. 在配置页填写 Windows 的局域网 IP、端口、配对密码，以及两端的显示器接口值，点击“保存并应用”。
+5. 在配置页顶部选择**本机角色**：
+   - 键鼠插在 Mac 上 → 选 **主机**，页面会显示本机地址（在另一台电脑上填这个地址）；
+   - 键鼠在另一台电脑上 → 选 **客户端**，填写对端主机的局域网 IP。
+6. 填写端口、配对密码、以及两端的显示器接口值，点击“保存并应用”。
 
 ### 方式 B：zip 手动安装
 
@@ -161,7 +167,7 @@ OneDesk.exe --set-input 17
 /Applications/OneDesk.app/Contents/MacOS/OneDesk --setup
 ```
 
-向导会询问 Windows 地址、端口、密码、两端接口、是否同步剪贴板、是否交换 Ctrl/Cmd，并可安装登录代理。
+向导会询问本机角色（键盘鼠标是否插在本机）、对端地址、端口、密码、两端接口、是否同步剪贴板、是否交换 Ctrl/Cmd，并可安装登录代理。
 
 ### 其他命令
 
@@ -178,7 +184,7 @@ OneDesk.exe --set-input 17
 
 ### m1ddc
 
-Mac 端切回 Windows 依赖 [`m1ddc`](https://github.com/waydabber/m1ddc)。构建脚本会尝试把它放进 `OneDesk.app/Contents/Resources/m1ddc`；也可以手动安装：
+Mac 端切换显示器输入（无论主机还是客户端）依赖 [`m1ddc`](https://github.com/waydabber/m1ddc)。构建脚本会尝试把它放进 `OneDesk.app/Contents/Resources/m1ddc`；也可以手动安装：
 
 ```bash
 brew install m1ddc
@@ -191,6 +197,29 @@ brew install m1ddc
 - 用 USB-C 转 HDMI 转接头时，很多转接芯片不透传 DDC，需要带 VMM7100 之类支持 DDC 中继的芯片。
 - `m1ddc` 只有 `set input`，**没有读取当前输入的命令**。因此 Mac 侧的接口值只能看显示器 OSD 里显示的活动输入名称，或用 `--test-ddc <值>` 逐个试——注意试错会让显示器切到无信号输入，需要用显示器上的按键切回来。
 - 部分 LG 显示器需要启用“备用输入寻址”（配置文件中的 `MacAlternateInput`，目前可在配置 JSON 中设置）。
+
+## Mac 作为主机（键鼠接在 Mac 上）
+
+如果键盘鼠标插在 Mac 上，就让 Mac 当主机、另一台当客户端。程序是同一份，只在配置页里换角色，不需要重装。
+
+1. Mac 配置页 → **本机角色** 选“主机”，保存并应用。服务会重启为监听模式。
+2. 页面会显示 `本机地址`，把它填到另一台电脑的“主机地址”里；端口和配对密码两端保持一致。
+3. **辅助功能权限**：主机模式需要它来捕获（并屏蔽）本机键鼠。授权后配置页的“辅助功能权限”会显示“已授权”，必要时重启一次服务。
+4. 按热键切换：
+
+   - 在 Mac 上按 `Ctrl + Alt + Space`（`Command` 相当于 Windows 键），Mac 开始把键鼠转发给另一台，显示器切到另一台的接口；
+   - 再按一次切回 Mac，另一台在释放时把显示器切回 Mac 的接口。
+
+5. 也可以点配置页里的“切换控制”，或用 `--status` / 日志确认状态。
+
+Mac 主机下的注意点：
+
+- **按键映射**：macOS 虚拟键码会转换成 Windows 键码再转发，因此另一台收到的按键与 Mac 上标注的一致；`Command` 映射为 Windows 键，`Option` 映射为 `Alt`，`Control` 映射为 `Ctrl`。Mac 上没有的键（如 `PrintScreen`、`Pause`）会被忽略并记录到日志。
+- **Caps Lock**：macOS 只在状态切换时上报一次，OneDesk 会把它转成一次完整的按下 + 抬起。
+- **鼠标坐标**：以 Mac 所有活动显示器组成的矩形区域做归一化，再映射到对端的主显示器。
+- **触控板滚动**：连续滚动的像素增量会累积成滚轮格数（每 20 点约一格），因此滚动速度与系统设置有关。
+- **安全输入**：在密码框等启用 Secure Input 的地方，macOS 会暂停事件监听，此时无法转发按键（这是系统限制）。
+- **重启服务**：切换角色会重启后台服务；正在转发时会先释放控制权。
 
 ## 两台 Windows 互相控制
 
@@ -225,17 +254,23 @@ Windows 端的主机和客户端是**同一个安装包、同一个 `OneDesk.exe
 
 ## 配对与首次使用
 
-1. Windows 托盘菜单 → **设置…**，复制配对密码，确认端口（默认 `47821`）。
-2. Windows 设置窗口的“本机地址”一行会列出局域网 IPv4，点“复制”即可。
-3. Mac 配置页填入同一个 IP、端口和密码，保存。
-4. 配置页应显示“已连接”。如果没有，见[故障排查](#故障排查)。
-5. 在 Windows 上按 `Ctrl + Alt + Space`：
-   - Windows 向 Mac 发送接管请求；
-   - 显示器切换到 Mac 的接口；
-   - Mac 开始接收键鼠事件。
-6. 再按一次热键，或从托盘菜单选择“切回 Windows”。
+先确定哪一台当主机（键鼠插着的那台），然后在两台机器上填同样的**端口**和**配对密码**：
 
-首次切换可能因显示器 DDC 响应慢而多等 0.5–1 秒。设置中的 `SettleMs` 默认 800 ms。
+1. 主机端查出自己的局域网 IPv4：
+   - Windows：托盘菜单 → **设置…** → “本机地址”一行点“复制”；
+   - Mac：配置页的“运行状态”里会显示，或运行 `--status`。
+2. 客户端填上这个地址：
+   - Windows：设置窗口的“主机地址”；
+   - Mac：配置页的“对端主机地址”。
+3. 两台都确认配对密码与端口一致，保存。
+4. 客户端应显示“已连接”。如果没有，见[故障排查](#故障排查)。
+5. 在**主机**上按 `Ctrl + Alt + Space`（Mac 上 `Command` 相当于 Windows 键）：
+   - 主机向对端发送接管请求；
+   - 显示器切换到对端的接口；
+   - 对端开始接收键鼠事件。
+6. 再按一次热键，或用 Windows 托盘菜单 / Mac 配置页的“切换控制”切回。
+
+首次切换可能因显示器 DDC 响应慢而多等 0.5–1 秒。Windows 设置中的 `SettleMs` 默认 800 ms。
 
 ## 显示器 VCP 值
 
@@ -255,38 +290,43 @@ VCP 代码 `0x60`（96）表示输入源。常见值：
 
 ## 切换流程与已知限制
 
-- Windows 只能在**自己处于活动输入**时可靠地发送 DDC 命令，所以“切到 Mac”由 Windows 发起，“切回 Windows”由 Mac 发起。
-- 如果 Mac 端崩溃或 m1ddc 不可用，显示器可能停在 Mac 输入。此时用显示器按键手动切回，或重启 Mac 端后重试。
+- 显示器只能由**当前处于活动输入**的那一端可靠地驱动 DDC，因此“切到对端”由主机发起（主机此刻是活动输入），“切回主机”由客户端在释放时发起。主机在退出时也会尝试一次作为兜底。
+- 如果对端崩溃或 `m1ddc` 不可用，显示器可能停在对端输入。此时用显示器按键手动切回，或重启服务后重试。
 - 只转发**键盘、鼠标和纯文本剪贴板**；不转发音频、U 盘、摄像头等 USB 设备。
 - 不支持 Windows 安全桌面（`Ctrl+Alt+Del`、UAC 提示、锁屏）上的输入；这些界面由 Windows 自己处理。Windows 客户端还受 UIPI 限制，普通权限下无法向管理员权限的窗口注入输入。
-- 同一时间只允许一个 Mac 客户端连接。
+- macOS 的 Secure Input（密码框等）会暂停事件监听，此时无法转发按键。
+- 同一时间只允许一个客户端连接。
 - 建议在可信局域网使用。协议是加密的，但没有做第三方安全审计；不要在公网直接暴露 `47821` 端口。
 - 剪贴板为纯文本，按 UTF-8 限制在约 1.5 MB；图片/文件不会同步。
 - 鼠标使用绝对坐标映射。Windows 与 Mac 的指针加速度不同，手感可能有差异。
-- Mac 睡眠或锁屏后，连接会断开；唤醒后会自动重连。
+- 主机睡眠或锁屏后连接会断开；唤醒后会自动重连（客户端会自动重试）。
 
 ## 故障排查
 
 ### Mac 显示“等待连接”/“无法连接”
 
 1. 确认两端密码完全一致（空格和 `-` 会被忽略）。
-2. 确认 Windows 的 IPv4 地址填写正确，端口一致。
+2. 确认主机端的 IPv4 地址填写正确，端口一致。
 3. 在 Windows 上确认网络类型是“专用”，并检查防火墙规则 `OneDesk` 是否存在：
    ```powershell
    netsh advfirewall firewall show rule name=OneDesk
    ```
 4. 在 Mac 上测试端口：
    ```bash
-   nc -vz <Windows-IP> 47821
+   nc -vz <主机-IP> 47821
    ```
 5. 查看两端日志。Windows 日志在 `%APPDATA%\OneDesk\logs\onedesk.log`，Mac 日志在 `~/Library/Logs/OneDesk/client.log`。
+6. **Mac 当主机时**，还要允许入站连接：**系统设置 → 网络 → 防火墙 → 选项**，把 `OneDesk` 设为“允许传入连接”（或临时关闭防火墙验证）。
+7. Mac 主机下配置页的“连接”显示“等待连接”是正常的——它等的是客户端来接。
 
 ### 键鼠没有反应
 
-- Mac 配置页应显示“辅助功能：已授权”。
+- 按 Fn（或系统设置 → 键盘）确认功能键没有被“媒体键”模式吞掉；必要时换一个热键。
+- Mac 配置页应显示“辅助功能：已授权”；主机模式下“事件监听”也必须是可用状态。
+- 如果配置页显示“无法监听键盘/鼠标”，说明 macOS 没给 `CGEventTap` 权限：到 **系统设置 → 隐私与安全性 → 辅助功能** 勾选 OneDesk，然后重新保存配置让服务重启。
 - 如果之前安装过旧版本，系统设置里可能残留多个 OneDesk 条目。删除旧条目，重新勾选当前的 `/Applications/OneDesk.app`。
 - 某些安全软件会拦截全局钩子或模拟输入，需要把 OneDesk 加入白名单。
-- 如果只有部分按键无效，查看 Mac 日志中的“不支持的按键 VK=...”。目前使用 US ANSI 键位映射，非 US 布局的特殊键可能缺失。
+- 如果只有部分按键无效，查看日志中“不支持的按键”或“不支持的 macOS 按键”。目前使用 US ANSI 键位映射，非 US 布局的特殊键可能缺失。
 
 ### DDC 读取/切换失败
 
@@ -310,9 +350,10 @@ open /Applications/OneDesk.app
 
 ### 热键无效
 
-- 热键至少需要一个修饰键（Ctrl / Alt / Shift / Win）。
+- 热键至少需要一个修饰键（Ctrl / Alt / Shift / Win；Mac 上 `Command` 相当于 Win）。
 - 某些游戏、远程桌面或键盘驱动会独占热键；换一个组合键试试。
-- 如果热键与 Windows 系统快捷键冲突，Windows 可能优先处理。避免使用 `Win+L`、`Ctrl+Alt+Del` 等系统保留组合。
+- 如果热键与系统快捷键冲突，系统可能优先处理。Windows 上避免 `Win+L`、`Ctrl+Alt+Del`，macOS 上避免 `Command+Space`、`Command+Tab`（这类组合会被系统先用掉）。
+- Mac 主机下如果热键完全没反应，先确认配置页的“事件监听”可用（见上一条）。
 
 ## 卸载
 
@@ -394,15 +435,15 @@ export PKG_SIGN_IDENTITY="Developer ID Installer: Your Name (TEAMID)"
 dotnet run --project tools/OneDesk.SelfTest
 ```
 
-覆盖配置规范化、键位映射、Windows 输入映射（绝对坐标、按键/滚轮标志位）、协议往返、加密握手、大剪贴板、错误密码拒绝等。macOS 上同样可以运行（不依赖 CoreGraphics，也不依赖 Windows 的 P/Invoke）。
+覆盖配置规范化、键位映射（Windows ↔ macOS 双向，含与 `MapVirtualKey` 的扫描码交叉校验）、Windows 输入映射（绝对坐标、按键/滚轮标志位）、协议往返、加密握手、大剪贴板、错误密码拒绝等。macOS 上同样可以运行（不依赖 CoreGraphics，也不依赖 Windows 的 P/Invoke）。
 
 ## 项目结构
 
 ```
-src/OneDesk.Core/           配置、日志、协议、加密、键位/坐标映射、本地 Web 服务
+src/OneDesk.Core/           配置、日志、协议、加密、键位/坐标映射（双向）、本地 Web 服务
 src/OneDesk.Platform.Win/   Windows 公共层：SendInput 注入、DDC/CI、剪贴板
 src/OneDesk.Win/            Windows 托盘程序：主机（全局钩子）与客户端（连接/重放）二合一
-src/OneDesk.Client.Mac/     macOS 守护进程、CoreGraphics 注入、m1ddc、LaunchAgent
+src/OneDesk.Client.Mac/     macOS 守护进程：主机（CGEventTap 捕获）与客户端（注入）二合一、m1ddc、LaunchAgent
 tools/OneDesk.SelfTest/     无第三方依赖的自测
 installer/windows/          Inno Setup 脚本与构建脚本
 installer/macos/            Info.plist、pkg 脚本、构建/卸载脚本

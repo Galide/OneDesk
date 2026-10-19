@@ -385,11 +385,13 @@ a { color:#7ea2ff; }
   <div class="card">
     <h2>运行状态</h2>
     <div class="status">
+      <div class="stat"><div class="k">角色</div><div class="v" id="roleName">—</div></div>
       <div class="stat"><div class="k">连接</div><div class="v"><span id="conn" class="badge"><span class="dot"></span><span>未知</span></span></div></div>
       <div class="stat"><div class="k">控制权</div><div class="v"><span id="control" class="badge"><span class="dot"></span><span>未知</span></span></div></div>
       <div class="stat"><div class="k">辅助功能权限</div><div class="v"><span id="perm" class="badge"><span class="dot"></span><span>未知</span></span></div></div>
       <div class="stat"><div class="k">显示器</div><div class="v" id="display">—</div></div>
     </div>
+    <div class="hint" id="roleHint"></div>
     <div class="hint" id="lastError"></div>
   </div>
 
@@ -397,23 +399,28 @@ a { color:#7ea2ff; }
     <h2>连接设置</h2>
     <form id="form">
       <div class="grid">
-        <div><label>Windows 主机地址</label><input id="peerHost" placeholder="例如 192.168.1.20" autocomplete="off"></div>
+        <div><label>本机角色</label><select id="role">
+          <option value="Host">主机（键盘鼠标插在本机）</option>
+          <option value="Client">客户端（被另一台控制）</option>
+        </select></div>
+        <div><label id="peerLabel">对端主机地址</label><input id="peerHost" placeholder="例如 192.168.1.20" autocomplete="off"></div>
         <div><label>端口</label><input id="port" type="number" min="1024" max="65535"></div>
-        <div><label>配对密码</label><input id="password" placeholder="与 Windows 端一致" autocomplete="off"></div>
-        <div><label>本机接口（Mac）</label><select id="myInput"></select></div>
-        <div><label>对端接口（Windows）</label><select id="peerInput"></select></div>
+        <div><label>配对密码</label><input id="password" placeholder="与另一台保持一致" autocomplete="off"></div>
+        <div><label>本机接口（Mac 接在显示器的哪个口）</label><select id="myInput"></select></div>
+        <div><label>对端接口（另一台电脑接在显示器的哪个口）</label><select id="peerInput"></select></div>
         <div><label>m1ddc 显示器</label><input id="macDisplay" placeholder="留空自动选择外接屏" autocomplete="off"></div>
       </div>
       <div class="chk"><input type="checkbox" id="clipboard"><label for="clipboard" style="margin:0">切换时同步剪贴板（纯文本）</label></div>
       <div class="chk"><input type="checkbox" id="swap"><label for="swap" style="margin:0">把 Ctrl 映射为 Command，Win 映射为 Control</label></div>
       <div class="chk"><input type="checkbox" id="alternate"><label for="alternate" style="margin:0">使用 m1ddc 备用输入值（部分 LG 显示器）</label></div>
-      <div class="chk"><input type="checkbox" id="autoConnect"><label for="autoConnect" style="margin:0">启动后自动连接</label></div>
+      <div class="chk"><input type="checkbox" id="autoConnect"><label for="autoConnect" style="margin:0">启动后自动连接（客户端）</label></div>
       <div class="row">
         <button class="primary" type="submit">保存并应用</button>
+        <button type="button" class="ghost" id="toggleBtn" onclick="act('toggle')">切换控制</button>
         <button type="button" class="ghost" onclick="act('reconnect')">重新连接</button>
-        <button type="button" class="ghost" onclick="act('test-peer')">测试切到 Windows（3 秒后切回）</button>
-        <button type="button" class="ghost" onclick="act('test-my')">测试切回 Mac</button>
-        <button type="button" class="ghost" onclick="act('sync-clipboard')">发送 Mac 剪贴板</button>
+        <button type="button" class="ghost" onclick="act('test-peer')">测试切到对端（3 秒后切回）</button>
+        <button type="button" class="ghost" onclick="act('test-my')">测试切回本机</button>
+        <button type="button" class="ghost" onclick="act('sync-clipboard')">发送本机剪贴板</button>
         <button type="button" class="ghost" onclick="act('open-accessibility')">辅助功能设置</button>
       </div>
       <div class="msg" id="msg"></div>
@@ -424,7 +431,7 @@ a { color:#7ea2ff; }
     <h2>日志</h2>
     <div class="row" style="margin-top:0"><button class="ghost" onclick="loadLog()">刷新日志</button></div>
     <pre id="log">点击“刷新日志”查看。</pre>
-    <div class="hint">首次使用需要在“系统设置 → 隐私与安全性 → 辅助功能”中勾选 OneDesk。切换显示器输入依赖 m1ddc。</div>
+    <div class="hint">首次使用需要在“系统设置 → 隐私与安全性 → 辅助功能”中勾选 OneDesk（主机模式需要它来监听键鼠，客户端模式需要它来注入键鼠）。切换显示器输入依赖 m1ddc。角色切换后服务会重新启动。</div>
   </div>
 
   <div class="foot">OneDesk 1.0 · 仅监听 127.0.0.1:__PORT__</div>
@@ -435,6 +442,9 @@ const TOKEN = "__TOKEN__";
 const PRESETS = [["DisplayPort 1",15],["DisplayPort 2",16],["HDMI 1",17],["HDMI 2",18],["USB-C / DP Alt",27],["DVI",3],["VGA",1]];
 const $ = id => document.getElementById(id);
 let cfg = null;
+let status = null;
+
+function isHost() { return $("role").value === "Host"; }
 
 function fillSelect(el, value) {
   el.innerHTML = "";
@@ -459,19 +469,50 @@ function badge(el, text, cls) {
   el.innerHTML = '<span class="dot ' + cls + '"></span><span>' + text + '</span>';
 }
 
-async function load() {
-  const s = await api("/api/status");
+function applyRole() {
+  const host = isHost();
+  $("peerLabel").textContent = host ? "本机地址（在另一台电脑上填写）" : "对端主机地址";
+  $("peerHost").disabled = host;
+  $("autoConnect").disabled = host;
+  $("toggleBtn").style.display = host ? "" : "none";
+  const address = (status && status.addresses && status.addresses.length) ? status.addresses[0] : "";
+  $("peerHost").value = host ? address : (cfg ? (cfg.peerHost || "") : "");
+  $("peerHost").placeholder = host ? "未检测到本机地址" : "例如 192.168.1.20";
+}
+
+function updateStatus() {
+  if (!status) return;
+  const s = status;
+  const host = s.role === "Host";
   $("hostname").textContent = s.hostname || "";
-  badge($("conn"), s.connected ? "已连接" : (s.autoConnect ? "等待连接" : "未启用"), s.connected ? "ok" : "warn");
-  badge($("control"), s.controlled ? "Mac 正在被控制" : "Windows 本地控制", s.controlled ? "ok" : "");
-  badge($("perm"), s.accessibility ? "已授权" : "未授权", s.accessibility ? "ok" : "bad");
+  $("roleName").textContent = host ? "主机（键鼠在本机）" : "客户端（受控）";
+  badge($("conn"), s.connected ? "已连接" : "等待连接", s.connected ? "ok" : "warn");
+  if (host) {
+    badge($("control"), s.controlling ? "本机正在控制对端" : "本机控制", s.controlling ? "ok" : "");
+  } else {
+    badge($("control"), s.controlled ? "对端正在控制本机" : "本机控制", s.controlled ? "ok" : "");
+  }
+  const permOk = s.accessibility && (!host || s.capturing);
+  badge($("perm"), permOk ? "已授权" : "未授权", permOk ? "ok" : "bad");
   $("display").textContent = s.display || "—";
+  if (host) {
+    const where = (s.addresses && s.addresses.length) ? s.addresses.join(" / ") : "未检测到地址";
+    $("roleHint").textContent = "主机模式：按 " + (s.hotkey || "热键") + " 把控制权交给对端；监听" +
+      (s.listening ? "中 · " : "未启动 · ") + where;
+  } else {
+    $("roleHint").textContent = "客户端模式：由对端主机按键切换控制权" + (s.peer ? "（对端 " + s.peer + "）" : "");
+  }
   $("lastError").textContent = s.lastError ? "最近错误：" + s.lastError : "";
+}
+
+async function load() {
+  status = await api("/api/status");
+  updateStatus();
 }
 
 async function loadConfig() {
   cfg = await api("/api/config");
-  $("peerHost").value = cfg.peerHost || "";
+  $("role").value = cfg.role || "Client";
   $("port").value = cfg.port;
   $("password").value = cfg.password || "";
   $("macDisplay").value = cfg.monitor.macDisplay || "";
@@ -481,15 +522,20 @@ async function loadConfig() {
   $("autoConnect").checked = !!cfg.autoConnect;
   fillSelect($("myInput"), cfg.monitor.myInput);
   fillSelect($("peerInput"), cfg.monitor.peerInput);
+  applyRole();
 }
 
 function msg(text, ok) {
   const m = $("msg"); m.textContent = text; m.className = "msg " + (ok ? "ok" : "err");
 }
 
+$("role").addEventListener("change", applyRole);
+
 $("form").addEventListener("submit", async e => {
   e.preventDefault();
-  cfg.peerHost = $("peerHost").value.trim();
+  const host = isHost();
+  cfg.role = $("role").value;
+  if (!host) cfg.peerHost = $("peerHost").value.trim();
   cfg.port = Number($("port").value);
   cfg.password = $("password").value.trim();
   cfg.clipboardSync = $("clipboard").checked;
@@ -501,7 +547,11 @@ $("form").addEventListener("submit", async e => {
   cfg.monitor.macAlternateInput = $("alternate").checked;
   const r = await api("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
   msg(r.ok ? "已保存，正在应用…" : ("保存失败：" + r.error), r.ok);
-  if (r.ok) { await new Promise(r => setTimeout(r, 700)); await load(); }
+  if (r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 900));
+    await load();
+    await loadConfig();
+  }
 });
 
 async function act(name) {
@@ -515,7 +565,7 @@ async function loadLog() {
   $("log").textContent = await r.text();
 }
 
-load(); loadConfig();
+load().then(loadConfig);
 setInterval(load, 2000);
 setInterval(loadLog, 5000);
 </script>
