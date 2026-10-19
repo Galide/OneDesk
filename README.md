@@ -48,19 +48,30 @@ Windows 作为 Host（键盘、鼠标、剪贴板都在这一侧），Mac 作为
 
 ## 接线
 
-1. Windows 用 **DisplayPort** 连接显示器，Mac 用 **HDMI**（或反过来，接口值稍后配置即可）。
+1. **Mac 用雷电 / USB-C 转 DisplayPort 连接显示器，Windows 用 HDMI**（也可以反过来，接口值稍后配置即可）。
 2. 键盘、鼠标接收器/线缆接在 **Windows** 上。
 3. 两台机器接入同一局域网。
 4. 在显示器 OSD 中打开 **DDC/CI**。部分显示器还需要把 DisplayPort 版本设为 1.2/1.4，或关闭“深度睡眠”。
+
+为什么推荐这个方向：Apple Silicon 在 USB-C / DisplayPort Alt Mode 上的 DDC/CI 最可靠，而 M1 及入门级 M2 的**原生 HDMI** 口发不出 DDC 命令。把 Mac 放在 USB-C / DP 侧可以避开这个坑，详见 [m1ddc](#m1ddc)。
 
 默认假设：
 
 | 机器 | 接口 | VCP `0x60` 值 |
 | --- | --- | --- |
-| Windows | DisplayPort 1 | `15` |
-| Mac | HDMI 1 | `17` |
+| Mac | DisplayPort 1（雷电 / USB-C 转 DP） | `15` |
+| Windows | HDMI 1 | `17` |
 
 实际值以显示器为准。Windows 设置窗口里的“读取当前输入”可以验证；不同厂商的编号可能不同。
+
+两端的值必须**互相对应**：
+
+| | Windows 设置里的值 | Mac 配置页里的值 |
+| --- | --- | --- |
+| 本机接口 | `MyInput` = HDMI 口（如 `17`） | `MyInput` = DP 口（如 `15`） |
+| 对端接口 | `PeerInput` = DP 口（如 `15`） | `PeerInput` = HDMI 口（如 `17`） |
+
+也就是说，Windows 的 `PeerInput` 就是 Mac 的 `MyInput`，反之亦然。
 
 ## 安装 Windows（Host）
 
@@ -166,7 +177,9 @@ brew install m1ddc
 注意：
 
 - `m1ddc` 只支持 Apple Silicon，不支持 Intel Mac。
-- M1 及入门级 M2 的**原生 HDMI** 口可能不支持 DDC/CI；请优先使用 USB-C / DisplayPort Alt Mode 连接显示器。
+- M1 及入门级 M2 的**原生 HDMI** 口发不出 DDC 命令，无法切换输入；请把 Mac 接在 USB-C / DisplayPort Alt Mode 上。M2 及更新机型的 HDMI 口通常可用，但仍以实测为准（取决于机型、线缆和转换器）。
+- 用 USB-C 转 HDMI 转接头时，很多转接芯片不透传 DDC，需要带 VMM7100 之类支持 DDC 中继的芯片。
+- `m1ddc` 只有 `set input`，**没有读取当前输入的命令**。因此 Mac 侧的接口值只能看显示器 OSD 里显示的活动输入名称，或用 `--test-ddc <值>` 逐个试——注意试错会让显示器切到无信号输入，需要用显示器上的按键切回来。
 - 部分 LG 显示器需要启用“备用输入寻址”（配置文件中的 `MacAlternateInput`，目前可在配置 JSON 中设置）。
 
 ## 配对与首次使用
@@ -197,7 +210,7 @@ VCP 代码 `0x60`（96）表示输入源。常见值：
 | DVI | 3 |
 | VGA | 1 |
 
-不同显示器可能使用不同编号。以 Windows“读取当前输入”的结果为准；Mac 端可以用 `--test-ddc <值>` 逐个尝试。
+不同显示器可能使用不同编号。以 Windows“读取当前输入”的结果为准；Mac 端的值无法自动读取（`m1ddc` 不支持读取输入源），需要从显示器 OSD 判断，或用 `--test-ddc <值>` 逐个尝试——试错时屏幕会切到无信号输入，需要用显示器按键切回。
 
 ## 切换流程与已知限制
 
@@ -238,6 +251,7 @@ VCP 代码 `0x60`（96）表示输入源。常见值：
 
 - 确认显示器 OSD 中启用了 DDC/CI。
 - 换用 DisplayPort 或 USB-C；部分显示器的 HDMI 口不支持 DDC 写入。
+- **Mac 接在 HDMI 口时切回失败（尤其是 M1 / 入门级 M2）**：这些 HDMI 口不发 DDC 命令。把 Mac 改接到 USB-C / DisplayPort Alt Mode，让 Windows 用 HDMI。
 - `--get-input` 失败但 `--set-input` 成功是正常的，有些显示器只支持写、不支持读。
 - 如果 Windows 端切换失败，OneDesk 会自动退出远程模式，避免出现“显示器切走了但键鼠没过去”的状态。
 - Mac 端 `m1ddc` 不存在时，配置页会显示 `m1ddc: false`。安装后重启 OneDesk 代理。
