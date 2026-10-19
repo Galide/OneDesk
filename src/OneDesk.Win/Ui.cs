@@ -95,7 +95,7 @@ internal sealed class Card : SurfacePanel
 {
     public Card() : base(Color.Transparent)
     {
-        Padding = new Padding(18, 14, 18, 14);
+        Padding = new Padding(18, 10, 18, 10);
     }
 
     public Color Fill { get; set; } = Theme.Card;
@@ -174,10 +174,12 @@ internal sealed class SwitchRow : SettingRow
 {
     private readonly Label _title;
     private readonly Label _subtitle;
+    private readonly bool _hasSubtitle;
 
     public SwitchRow(string title, string? subtitle, ToggleSwitch toggle)
         : base()
     {
+        _hasSubtitle = subtitle is not null;
         _title = new Label
         {
             Text = title,
@@ -201,7 +203,7 @@ internal sealed class SwitchRow : SettingRow
 
         Toggle = toggle;
         Controls.Add(toggle);
-        Height = subtitle is null ? 50 : 64;
+        Height = _hasSubtitle ? 62 : 52;
     }
 
     public ToggleSwitch Toggle { get; }
@@ -209,11 +211,21 @@ internal sealed class SwitchRow : SettingRow
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        var right = Width - Toggle.Width;
-        Toggle.Location = new Point(right, (Height - Toggle.Height) / 2);
-        var textWidth = right - 12;
-        _title.SetBounds(0, _subtitle.Visible ? 11 : (Height - _title.PreferredHeight) / 2, textWidth, _title.PreferredHeight);
-        _subtitle.SetBounds(0, _title.Bottom + 2, textWidth, 18);
+        var toggleX = Width - Toggle.Width;
+        Toggle.Location = new Point(toggleX, (Height - Toggle.Height) / 2);
+
+        var textWidth = Math.Max(40, toggleX - 16);
+        if (_hasSubtitle)
+        {
+            var block = _title.PreferredHeight + 3 + 18;
+            var top = Math.Max(0, (Height - block) / 2);
+            _title.SetBounds(0, top, textWidth, _title.PreferredHeight);
+            _subtitle.SetBounds(0, _title.Bottom + 3, textWidth, 18);
+        }
+        else
+        {
+            _title.SetBounds(0, (Height - _title.PreferredHeight) / 2, textWidth, _title.PreferredHeight);
+        }
     }
 }
 
@@ -245,7 +257,7 @@ internal sealed class FieldRow : SettingRow
 
         _trailing = trailing;
         foreach (var control in trailing) Controls.Add(control);
-        Height = 48;
+        Height = 52;
     }
 
     /// <summary>Optional hint shown under the field; setting it makes the row taller.</summary>
@@ -260,7 +272,7 @@ internal sealed class FieldRow : SettingRow
             value.BackColor = Color.Transparent;
             _hint = value;
             Controls.Add(value);
-            Height = 68;
+            Height = 70;
         }
     }
 
@@ -281,8 +293,8 @@ internal sealed class FieldRow : SettingRow
 
     private void LayoutContent()
     {
-        var fieldTop = _hint is null ? (Height - 34) / 2 : 6;
-        _label.SetBounds(0, fieldTop + 8, LabelWidth - 12, 20);
+        var fieldTop = _hint is null ? (Height - 34) / 2 : 8;
+        _label.SetBounds(0, fieldTop + 7, LabelWidth - 12, 20);
 
         var right = Width;
         for (var i = _trailing.Length - 1; i >= 0; i--)
@@ -351,7 +363,7 @@ internal sealed class TextRow : SettingRow
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        _text.SetBounds(0, 4, Width, Height - 10);
+        _text.SetBounds(0, 7, Width, Height - 14);
     }
 }
 

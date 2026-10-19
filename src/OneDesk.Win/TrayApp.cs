@@ -65,7 +65,7 @@ public sealed class TrayApp : ApplicationContext
 {
     private readonly AppHost _app;
     private readonly NotifyIcon _notify;
-    private readonly ContextMenuStrip _menu = new();
+    private readonly RoundedMenu _menu = new();
     private readonly System.Windows.Forms.Timer _timer;
     private readonly ConcurrentQueue<(string Text, bool Error)> _notifications = new();
 
@@ -123,9 +123,6 @@ public sealed class TrayApp : ApplicationContext
 
     private void BuildMenu()
     {
-        _menu.Font = Theme.Body;
-        _menu.ShowImageMargin = false;
-
         _switchItem.Font = new Font(Theme.Family, 9.25f, FontStyle.Bold);
         _switchItem.Click += (_, _) => _ = Task.Run(() => _app.ToggleAsync());
 
@@ -180,8 +177,10 @@ public sealed class TrayApp : ApplicationContext
         _menu.Items.Add(new ToolStripMenuItem("打开日志", null, (_, _) => OpenLog()));
 
         var roleMenu = new ToolStripMenuItem("角色");
-        roleMenu.DropDownItems.Add(_hostRoleItem);
-        roleMenu.DropDownItems.Add(_clientRoleItem);
+        var roleDrop = new RoundedMenu(withCheckMarks: true);
+        roleMenu.DropDown = roleDrop;
+        roleDrop.Items.Add(_hostRoleItem);
+        roleDrop.Items.Add(_clientRoleItem);
         _menu.Items.Add(roleMenu);
 
         _menu.Items.Add(_startupItem);

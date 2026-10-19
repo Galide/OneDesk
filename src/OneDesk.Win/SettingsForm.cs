@@ -199,16 +199,16 @@ public sealed class SettingsForm : Form
         // Role.
         _content.Controls.Add(_roleGroupLabel());
         _roleCard.Width = CardWidth;
-        _roleCard.Height = 114;
+        _roleCard.Height = 112;
         _roleCard.Margin = new Padding(0, 0, 0, 18);
-        _roleSegment.Location = new Point(18, 16);
+        _roleSegment.Location = new Point(18, 14);
         _roleSegment.Width = InnerWidth;
         _roleSegment.Items = new[] { "主机", "客户端" };
         _roleHint.AutoSize = false;
         _roleHint.Font = Theme.Small;
         _roleHint.ForeColor = Theme.Secondary;
         _roleHint.BackColor = Color.Transparent;
-        _roleHint.SetBounds(18, 64, InnerWidth, 38);
+        _roleHint.SetBounds(18, 62, InnerWidth, 38);
         _roleCard.Controls.AddRange(new Control[] { _roleSegment, _roleHint });
         _content.Controls.Add(_roleCard);
 
