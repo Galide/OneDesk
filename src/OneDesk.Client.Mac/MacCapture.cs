@@ -165,14 +165,24 @@ public sealed class MacCapture : IDisposable
         }
 
         var source = CFMachPortCreateRunLoopSource(IntPtr.Zero, tap, IntPtr.Zero);
-        var mode = CFStringCreateWithCString(IntPtr.Zero, "OneDeskTap", CFStringEncodingUtf8);
+        // CoreFoundation compares mode names by string value, so this is the documented
+        // kCFRunLoopDefaultMode constant without needing to poke at the CF symbol.
+        var mode = CFStringCreateWithCString(IntPtr.Zero, "kCFRunLoopDefaultMode", CFStringEncodingUtf8);
         var loop = CFRunLoopGetCurrent();
         CFRunLoopAddSource(loop, source, mode);
 
         Volatile.Write(ref _tap, tap);
         Volatile.Write(ref _runLoop, loop);
         CGEventTapEnable(tap, true);
-        Log.Info("键盘/鼠标监听已启动");
+
+        if (!CGEventTapIsEnabled(tap))
+        {
+            Log.Error("事件监听没有启用：请在“系统设置 → 隐私与安全性 → 辅助功能”中勾选 OneDesk，然后重启服务");
+        }
+        else
+        {
+            Log.Info("键盘/鼠标监听已启动");
+        }
 
         while (_running)
         {
