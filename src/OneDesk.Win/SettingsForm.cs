@@ -363,6 +363,8 @@ public sealed class SettingsForm : Form
         _autoConnectToggle.Checked = _config.AutoConnect;
         _startupToggle.Checked = Startup.IsEnabled;
         _hotkeyField.Text = _hotkey.Describe();
+        _hotkeyField.ReadOnly = true;
+        _hotkeyField.Inner.ShortcutsEnabled = false;
         FillInputSelect(_myInput, _config.Monitor.MyInput);
         FillInputSelect(_peerInput, _config.Monitor.PeerInput);
         _monitorSelect.SetItems(new[] { new SelectField.Item("正在检测显示器…", null) }, 0);

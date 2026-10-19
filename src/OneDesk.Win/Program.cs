@@ -103,7 +103,9 @@ internal static class Program
         {
             Console.WriteLine($"角色: {(config.Role == AppRole.Host ? "主机" : "客户端")}");
             Console.WriteLine($"配置文件: {AppConfig.ConfigPath}");
-            Console.WriteLine($"配对密码: {config.GroupedPassword()}");
+            Console.WriteLine(File.Exists(AppConfig.ConfigPath)
+                ? $"配对密码: {config.GroupedPassword()}"
+                : "配对密码: （首次启动 OneDesk 时生成）");
             Console.WriteLine($"端口: {config.Port}");
             if (config.Role == AppRole.Client) Console.WriteLine($"主机地址: {config.PeerHost}");
             else Console.WriteLine($"本机地址: {string.Join(", ", AppConfig.LocalIPv4Addresses())}");
