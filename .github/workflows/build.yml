@@ -42,7 +42,7 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS client package
+    name: macOS package (host or client)
     runs-on: macos-15
 
     steps:
@@ -52,7 +52,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Build macOS client
+      - name: Build macOS app
         run: dotnet build src/OneDesk.Client.Mac/OneDesk.Client.Mac.csproj -c Release --nologo
 
       - name: Run protocol and config tests
