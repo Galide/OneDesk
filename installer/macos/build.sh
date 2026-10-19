@@ -37,7 +37,7 @@ if [ "$(uname -m)" != "arm64" ]; then
     echo "warning: building on $(uname -m); the app is published for osx-arm64 only."
 fi
 
-echo "==> Publishing macOS client (osx-arm64, self-contained)"
+echo "==> Publishing macOS app (osx-arm64, self-contained)"
 rm -rf "$PUB" "$STAGE" "$COMPONENT" "$FINAL" "$ZIP"
 mkdir -p "$PUB" "$APP/Contents/MacOS" "$APP/Contents/Resources"
 

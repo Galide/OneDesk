@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install the per-user LaunchAgent and start the background client.
+# Install the per-user LaunchAgent and start the background service.
 set -u
 
 APP="/Applications/OneDesk.app"
