@@ -130,7 +130,6 @@ public sealed class MacAgent : IAsyncDisposable
             }
 
             _config = config.Clone();
-            _config.Role = config.Role;
             StartCore();
         }
 
@@ -159,7 +158,7 @@ public sealed class MacAgent : IAsyncDisposable
                     MacHost? host;
                     lock (_gate) host = _host;
                     if (host is null) return "只有主机模式可以主动切换";
-                    host.ToggleAsyncPublic().GetAwaiter().GetResult();
+                    host.ToggleAsync().GetAwaiter().GetResult();
                     return host.IsRemote ? "已切换到对端控制" : "已切回本机控制";
                 }
 

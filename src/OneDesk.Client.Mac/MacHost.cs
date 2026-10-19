@@ -416,7 +416,7 @@ public sealed class MacHost : IDisposable
             else if (isHotkey && !_hotkeyLatch)
             {
                 _hotkeyLatch = true;
-                _ = Task.Run(ToggleAsync);
+                _ = Task.Run(ToggleCoreAsync);
             }
 
             if (isHotkey) return true;
@@ -497,7 +497,10 @@ public sealed class MacHost : IDisposable
         _outbox.Enqueue(message);
     }
 
-    private async Task ToggleAsync()
+    /// <summary>Switches control to the peer, or takes it back if it is already remote.</summary>
+    public Task ToggleAsync() => ToggleCoreAsync();
+
+    private async Task ToggleCoreAsync()
     {
         if (!await _transition.WaitAsync(0).ConfigureAwait(false)) return;
         try
@@ -515,8 +518,6 @@ public sealed class MacHost : IDisposable
             _transition.Release();
         }
     }
-
-    public Task ToggleAsyncPublic() => ToggleAsync();
 
     private async Task EnterRemoteCoreAsync()
     {

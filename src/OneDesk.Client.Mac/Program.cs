@@ -62,7 +62,7 @@ OneDesk macOS 端
   --test-ddc <值>     直接测试 DDC 输入切换（15=DP1, 17=HDMI1, 18=HDMI2）
   --status            显示配置和显示器信息
 
-同一份程序既可以是主机（键盘鼠标插在 Mac 上）也可以是客户端（受 Windows 控制），
+同一份程序既可以是主机（键盘鼠标插在 Mac 上）也可以是客户端（受另一台电脑控制），
 在配置面板里随时切换角色。
 
 配置面板： http://127.0.0.1:47822/
@@ -111,7 +111,7 @@ OneDesk macOS 端
                  $"配置: {AppConfig.ConfigPath}");
         if (config.Role == AppRole.Client && string.IsNullOrWhiteSpace(config.PeerHost))
         {
-            Log.Warn("尚未配置 Windows 地址，请打开 http://127.0.0.1:" + config.WebPort + "/ 进行设置");
+            Log.Warn("尚未配置对端主机地址，请打开 http://127.0.0.1:" + config.WebPort + "/ 进行设置");
         }
 
         var exit = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -175,7 +175,7 @@ OneDesk macOS 端
         Console.WriteLine();
         Console.WriteLine("接口值: 15=DisplayPort 1, 16=DisplayPort 2, 17=HDMI 1, 18=HDMI 2, 27=USB-C");
         config.Monitor.MyInput = PromptInt("Mac 接在显示器的哪个接口", config.Monitor.MyInput, 0, 255);
-        config.Monitor.PeerInput = PromptInt("Windows 接在显示器的哪个接口", config.Monitor.PeerInput, 0, 255);
+        config.Monitor.PeerInput = PromptInt("另一台电脑接在显示器的哪个接口", config.Monitor.PeerInput, 0, 255);
 
         var displays = new MacDdc().GetDisplayList();
         if (!string.IsNullOrWhiteSpace(displays))
