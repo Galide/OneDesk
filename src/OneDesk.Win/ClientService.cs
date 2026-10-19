@@ -32,6 +32,9 @@ public sealed class ClientService : IDisposable
 
     public event Action? StateChanged;
 
+    /// <summary>Raised when the connection state changes in a way worth telling the user about.</summary>
+    public event Action<string, bool>? Notification;
+
     public AppConfig Config => _config;
     public bool Connected => _connected;
     public bool HasControl => _hasControl;
@@ -249,9 +252,11 @@ public sealed class ClientService : IDisposable
 
             lock (_gate) _channel = channel;
             _connected = true;
+            var recovered = _lastError.Length > 0;
             _lastError = "";
             Log.Info($"已连接主机 {cfg.PeerHost}:{cfg.Port}");
             RaiseState();
+            if (recovered) Notify($"已连接主机 {cfg.PeerHost}:{cfg.Port}", false);
 
             using var readCts = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
             while (!session.IsCancellationRequested)
@@ -427,6 +432,19 @@ public sealed class ClientService : IDisposable
         _lastError = message;
         Log.Warn(message);
         RaiseState();
+        Notify(message, true);
+    }
+
+    private void Notify(string message, bool isError)
+    {
+        try
+        {
+            Notification?.Invoke(message, isError);
+        }
+        catch
+        {
+            // notifications are best-effort
+        }
     }
 
     private void RaiseState()

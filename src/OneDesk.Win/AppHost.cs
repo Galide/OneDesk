@@ -71,6 +71,7 @@ public sealed class AppHost : IDisposable
             {
                 var service = new ClientService(_config);
                 service.StateChanged += RaiseState;
+                service.Notification += OnNotification;
                 _client = service;
             }
         }
